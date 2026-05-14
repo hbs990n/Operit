@@ -20,62 +20,15 @@ jobs:
           sed -i 's|git://github.com|https://github.com|g' .gitmodules
           git submodule sync
 
-          # Init individual submodules, allow failures for problematic ones
-          for sub in \
-            app/src/main/cpp/thirdparty/ncnn \
-            app/src/main/cpp/thirdparty/sherpa-ncnn \
-            fbx/third_party/ufbx \
-            llama/third_party/llama.cpp \
-            quickjs/thirdparty/quickjs; do
-            git submodule update --init --depth 1 "$sub" || true
-          done
+          # Init all top-level submodules
+          git submodule update --init --depth 1
 
-          # Clone submodules with missing/problematic URLs manually
-          git clone --depth 1 https://github.com/bulletphysics/bullet3.git mmd/third_party/bullet3 || true
-          git clone --depth 1 https://github.com/AAswordman/OperitTerminalCore.git tools/hotbuild/OperitNightlyRelease || true
+          # Try to init nested submodules recursively, allow failures for missing URLs
+          git submodule update --init --recursive --depth 1 || true
 
-      - name: Patch source for CI build
-        run: |
-          # Comment out modules that need complex native builds or missing deps in settings.gradle.kts
-          for mod in dragonbones terminal mnn llama mmd fbx showerclient quickjs; do
-            sed -i "s/^include(\":$mod\")$/\\/\\/include(\":$mod\")/" settings.gradle.kts
-          done
-
-          # Comment out the corresponding project dependencies in app/build.gradle.kts
-          for mod in dragonbones terminal mnn llama mmd fbx showerclient quickjs; do
-            sed -i "s/^\(\s*implementation(project(\":$mod\"))\)$/\\/\\/ \1/" app/build.gradle.kts
-          done
-
-          # Remove kapt block for JDK compatibility
-          sed -i '/kapt {/,/}/d' app/build.gradle.kts || true
-
-          # Disable kapt incremental
-          grep -q 'kapt.incremental' gradle.properties || echo 'kapt.incremental.apt=false' >> gradle.properties
-
-          # Remove local aar/jar fileTree dependencies
-          sed -i '/fileTree.*libs.*aar.*jar/d' app/build.gradle.kts
-
-          # Comment out FFmpegKit imports
-          for f in $(grep -rl 'import com\.arthenica' app/src/ 2>/dev/null | grep -v '.class'); do
-            sed -i 's|^import com\.arthenica\.\(.*\)|// import com.arthenica.\1 // ffmpeg removed|' "$f"
-          done
-
-          # Stub out FFmpegKit/FFprobeKit/FFmpegKitConfig references in Kotlin files
-          for f in $(grep -rl 'FFmpegKit\|FFprobeKit\|FFmpegKitConfig' app/src/ 2>/dev/null | grep '\.kt$'); do
-            sed -i 's|FFmpegKit\.\(.*\)|/* FFmpegKit.\1 */|g' "$f"
-            sed -i 's|FFprobeKit\.\(.*\)|/* FFprobeKit.\1 */|g' "$f"
-            sed -i 's|FFmpegKitConfig\.\(.*\)|/* FFmpegKitConfig.\1 */|g' "$f"
-          done
-
-          # Stub out Terminal-related code in ToolboxScreen.kt
-          TOOLBOX_FILE="app/src/main/java/com/ai/assistance/operit/ui/features/toolbox/screens/ToolboxScreen.kt"
-          if [ -f "$TOOLBOX_FILE" ]; then
-            sed -i 's|^import com\.ai\.assistance\.operit\.terminal\.main\.TerminalScreen as TerminalViewScreen|// import com.ai.assistance.operit.terminal.main.TerminalScreen as TerminalViewScreen|' "$TOOLBOX_FILE"
-            sed -i 's|^import com\.ai\.assistance\.operit\.terminal\.TerminalManager|// import com.ai.assistance.operit.terminal.TerminalManager|' "$TOOLBOX_FILE"
-            sed -i 's|^import com\.ai\.assistance\.operit\.terminal\.rememberTerminalEnv|// import com.ai.assistance.operit.terminal.rememberTerminalEnv|' "$TOOLBOX_FILE"
-            sed -i 's|val terminalManager = remember { TerminalManager.getInstance(context) }|// terminalManager stubbed|' "$TOOLBOX_FILE"
-            sed -i 's|val terminalEnv = rememberTerminalEnv(terminalManager = terminalManager, forceShowSetup = forceShowSetup)|// terminalEnv stubbed|' "$TOOLBOX_FILE"
-            sed -i 's|TerminalViewScreen(env = terminalEnv)|Text("Terminal unavailable")|' "$TOOLBOX_FILE"
+          # Manually clone submodules with missing .gitmodules entries
+          if [ ! -d "mmd/third_party/bullet3/.git" ]; then
+            git clone --depth 1 https://github.com/bulletphysics/bullet3.git mmd/third_party/bullet3 || true
           fi
 
       - name: Set up JDK 17
@@ -96,7 +49,6 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
-          # Exit with Gradle's exit code, not tee's
           exit ${PIPESTATUS[0]}
 
       - name: Upload APK
