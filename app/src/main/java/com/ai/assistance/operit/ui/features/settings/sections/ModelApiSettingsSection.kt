@@ -138,6 +138,9 @@ fun ModelApiSettingsSection(
     // Tool Call配置状态
     var enableToolCallInput by remember(config.id) { mutableStateOf(config.enableToolCall) }
 
+    // DeepSeek推理模式配置状态
+    var enableDeepseekReasoningInput by remember(config.id) { mutableStateOf(config.enableDeepseekReasoning) }
+
     data class ApiAutoSaveState(
         val apiEndpoint: String,
         val apiKey: String,
@@ -154,6 +157,7 @@ fun ModelApiSettingsSection(
         val enableDirectVideoProcessing: Boolean,
         val enableGoogleSearch: Boolean,
         val enableToolCall: Boolean,
+        val enableDeepseekReasoning: Boolean,
     )
 
     // 保存设置的通用函数
@@ -177,6 +181,7 @@ fun ModelApiSettingsSection(
                     enableDirectVideoProcessing = state.enableDirectVideoProcessing,
                     enableGoogleSearch = state.enableGoogleSearch,
                     enableToolCall = state.enableToolCall,
+                    enableDeepseekReasoning = state.enableDeepseekReasoning,
                 )
 
                 EnhancedAIService.refreshAllServices(
@@ -203,6 +208,7 @@ fun ModelApiSettingsSection(
             enableDirectVideoProcessing = enableDirectVideoProcessingInput,
             enableGoogleSearch = enableGoogleSearchInput,
             enableToolCall = enableToolCallInput,
+            enableDeepseekReasoning = enableDeepseekReasoningInput,
         )
     }
 
@@ -750,6 +756,25 @@ fun ModelApiSettingsSection(
                 checked = enableToolCallInput,
                 onCheckedChange = { enableToolCallInput = it }
             )
+
+            // DeepSeek推理模式开关（仅对非DeepSeek的OpenAI兼容供应商显示）
+            if (selectedApiProvider != ApiProviderType.DEEPSEEK &&
+                selectedApiProvider != ApiProviderType.ANTHROPIC &&
+                selectedApiProvider != ApiProviderType.ANTHROPIC_GENERIC &&
+                selectedApiProvider != ApiProviderType.GOOGLE &&
+                selectedApiProvider != ApiProviderType.GEMINI_GENERIC &&
+                selectedApiProvider != ApiProviderType.OPENAI_RESPONSES &&
+                selectedApiProvider != ApiProviderType.OPENAI_RESPONSES_GENERIC &&
+                selectedApiProvider != ApiProviderType.MNN &&
+                selectedApiProvider != ApiProviderType.LLAMA_CPP &&
+                selectedApiProvider != ApiProviderType.OLLAMA) {
+                SettingsSwitchRow(
+                    title = stringResource(R.string.enable_deepseek_reasoning),
+                    subtitle = stringResource(R.string.enable_deepseek_reasoning_desc),
+                    checked = enableDeepseekReasoningInput,
+                    onCheckedChange = { enableDeepseekReasoningInput = it }
+                )
+            }
 
         }
     }
