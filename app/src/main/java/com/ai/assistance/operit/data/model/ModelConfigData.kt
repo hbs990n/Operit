@@ -149,6 +149,9 @@ data class ModelConfigData(
         // Tool Call配置
         val enableToolCall: Boolean = false, // 是否启用Tool Call接口调用工具（使用模型原生工具调用而非XML格式）
 
+        // DeepSeek推理模式配置
+        val enableDeepseekReasoning: Boolean = false, // 是否启用DeepSeek推理模式（reasoning_content支持，适用于第三方端点调用DeepSeek模型）
+
         // 请求频率限制配置
         val requestLimitPerMinute: Int = 0, // 每分钟最大请求次数，0表示不限流
         val maxConcurrentRequests: Int = 0 // 最大并发请求数，0表示不限制
