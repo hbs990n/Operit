@@ -74,7 +74,7 @@ fun CompactToolDisplay(
     }
 
     val summary = remember(displayParams.length) {
-        val firstParamRegex = "<param.*?>([^<]*)<\\/param>".toRegex()
+        val firstParamRegex = "<param.*?>([^<]*)<\/param>".toRegex()
         val match = firstParamRegex.find(displayParams)
         match?.groupValues?.get(1)?.trim()?.takeIf { it.isNotEmpty() }
             ?: displayParams.replace("\n", " ").trim()
@@ -534,7 +534,7 @@ private fun extractParamPayloadsForSize(params: String): List<String> {
 }
 
 private fun buildParamsHeadPreview(params: String, maxChars: Int = 120): String {
-    val firstParamRegex = "<param.*?>([^<]*)<\\/param>".toRegex()
+    val firstParamRegex = "<param.*?>([^<]*)<\/param>".toRegex()
     val matched = firstParamRegex.find(params)?.groupValues?.get(1)?.trim()
     val cleaned = (matched?.takeIf { it.isNotEmpty() } ?: params)
         .replace("\n", " ")
@@ -562,7 +562,7 @@ private fun getToolIcon(toolName: String): ImageVector {
                 toolName.contains("shell") -> Icons.Default.Terminal
 
         // 代码工具
-        toolName.contains("code") || toolName.contains("ffmpeg") -> Icons.Default.Code
+        toolName.contains("code") -> Icons.Default.Code
 
         // 网络工具
         toolName.contains("http") || toolName.contains("web") || toolName.contains("visit") ->

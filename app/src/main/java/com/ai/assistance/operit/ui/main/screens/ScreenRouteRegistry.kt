@@ -19,7 +19,7 @@ import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.TableView
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Token
-import androidx.compose.material.icons.filled.VideoSettings
+
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.ui.common.NavItem
@@ -255,15 +255,6 @@ object ScreenRouteRegistry {
                 descriptionResId = R.string.tool_ui_debugger_desc,
                 icon = Icons.Default.DeviceHub,
                 order = 90
-            ),
-            hostEntryDefinition(
-                entryId = "toolbox.ffmpeg_toolbox",
-                screen = Screen.FFmpegToolbox,
-                surface = NavigationSurface.TOOLBOX,
-                titleResId = R.string.tool_ffmpeg_toolbox,
-                descriptionResId = R.string.tool_ffmpeg_toolbox_desc,
-                icon = Icons.Default.VideoSettings,
-                order = 100
             ),
             hostEntryDefinition(
                 entryId = "toolbox.shell_executor",

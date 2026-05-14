@@ -615,66 +615,6 @@ export interface TerminalSessionScreenResultData {
 }
 
 // ============================================================================
-// FFmpeg Types
-// ============================================================================
-
-import { FFmpegVideoCodec, FFmpegAudioCodec } from './ffmpeg';
-
-/**
- * FFmpeg stream information
- * Represents detailed information about a video or audio stream in a media file
- */
-export interface FFmpegStreamInfo {
-    /** Stream index in the media file (0-based) */
-    index: number;
-
-    /** Stream type: "video" or "audio" */
-    type: 'video' | 'audio';
-
-    /** Codec name used for this stream */
-    codec: FFmpegVideoCodec | FFmpegAudioCodec;
-
-    /** Frame rate for video streams (e.g., "30/1", "29.97") */
-    frameRate?: `${number}/${number}` | `${number}`;
-
-    /** Sample rate for audio streams in Hz (e.g., "44100") */
-    sampleRate?: `${number}`;
-
-    /** Number of audio channels (e.g., 2 for stereo) */
-    channels?: 1 | 2 | 4 | 6 | 8;
-
-    /** Returns a formatted string representation of the stream info */
-    toString(): string;
-}
-
-/**
- * FFmpeg result data
- * Contains comprehensive information about the FFmpeg operation execution
- */
-export interface FFmpegResultData {
-    /** The complete FFmpeg command that was executed */
-    command: string;
-
-    /** FFmpeg return code (0 indicates success) */
-    returnCode: number;
-
-    /** Complete output from the FFmpeg command execution */
-    output: string;
-
-    /** Execution duration in milliseconds */
-    duration: number;
-
-    /** Array of video stream information */
-    videoStreams: FFmpegStreamInfo[];
-
-    /** Array of audio stream information */
-    audioStreams: FFmpegStreamInfo[];
-
-    /** Returns a formatted string representation of the result */
-    toString(): string;
-}
-
-// ============================================================================
 // Result Type Wrappers
 // ============================================================================
 
