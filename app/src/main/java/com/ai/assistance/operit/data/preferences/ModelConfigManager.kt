@@ -354,7 +354,8 @@ class ModelConfigManager(private val context: Context) {
             enableDirectAudioProcessing: Boolean,
             enableDirectVideoProcessing: Boolean,
             enableGoogleSearch: Boolean,
-            enableToolCall: Boolean
+            enableToolCall: Boolean,
+            enableDeepseekReasoning: Boolean = false
     ): ModelConfigData {
         return updateConfigInternal(configId) {
             it.copy(
@@ -372,7 +373,8 @@ class ModelConfigManager(private val context: Context) {
                     enableDirectAudioProcessing = enableDirectAudioProcessing,
                     enableDirectVideoProcessing = enableDirectVideoProcessing,
                     enableGoogleSearch = enableGoogleSearch,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    enableDeepseekReasoning = enableDeepseekReasoning
             )
         }
     }
