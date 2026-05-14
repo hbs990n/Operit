@@ -297,7 +297,44 @@ object AIServiceFactory {
         val supportsVideo = config.enableDirectVideoProcessing
         // Tool Call支持标志
         val enableToolCall = config.enableToolCall
-        
+
+        // DeepSeek推理模式：当用户通过第三方OpenAI兼容端点调用DeepSeek模型时，
+        // 使用DeepseekProvider以支持reasoning_content
+        if (config.enableDeepseekReasoning && providerType != ApiProviderType.DEEPSEEK) {
+            val deepseekCompatibleTypes = setOf(
+                ApiProviderType.OPENAI,
+                ApiProviderType.OPENAI_GENERIC,
+                ApiProviderType.OPENAI_LOCAL,
+                ApiProviderType.LMSTUDIO,
+                ApiProviderType.SILICONFLOW,
+                ApiProviderType.ALIYUN,
+                ApiProviderType.BAIDU,
+                ApiProviderType.XUNFEI,
+                ApiProviderType.ZHIPU,
+                ApiProviderType.BAICHUAN,
+                ApiProviderType.IFLOW,
+                ApiProviderType.INFINIAI,
+                ApiProviderType.ALIPAY_BAILING,
+                ApiProviderType.PPINFRA,
+                ApiProviderType.NOVITA,
+                ApiProviderType.OTHER
+            )
+            if (providerType in deepseekCompatibleTypes) {
+                return DeepseekProvider(
+                    apiEndpoint = config.apiEndpoint,
+                    apiKeyProvider = apiKeyProvider,
+                    modelName = config.modelName,
+                    client = httpClient,
+                    customHeaders = customHeaders,
+                    providerType = providerType,
+                    supportsVision = supportsVision,
+                    supportsAudio = supportsAudio,
+                    supportsVideo = supportsVideo,
+                    enableToolCall = enableToolCall
+                )
+            }
+        }
+
         return when (providerType) {
             // OpenAI格式，支持原生和兼容OpenAI API的服务
             ApiProviderType.OPENAI,
