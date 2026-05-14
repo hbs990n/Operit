@@ -1,52 +1,40 @@
 name: Build Debug APK
-
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 120
-
     steps:
       - uses: actions/checkout@v4
-
       - name: Init submodules
         run: |
-          # All submodule URLs are now HTTPS in .gitmodules (fixed in repo)
           git submodule sync
-          # Init all submodules (top-level + recursive)
           git submodule update --init --recursive --depth 1
-
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
-
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-
       - name: Install NDK
         run: |
           sdkmanager --install "ndk;27.0.12077973" "build-tools;35.0.0" "platforms;android-36"
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-
       - name: Build
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+          ./gradlew assembleDebug --continue --no-daemon --stacktrace 2>&1 | tee build.log
           exit ${PIPESTATUS[0]}
-
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Operit-debug-apk
           path: app/build/outputs/apk/debug/*.apk
-
       - name: Upload build log on failure
         if: failure()
         uses: actions/upload-artifact@v4
