@@ -36,15 +36,15 @@ jobs:
 
       - name: Patch source for CI build
         run: |
-          # Comment out modules that need complex native builds or missing deps
-          sed -i 's/^include(":dragonbones")$/\/\/include(":dragonbones")/' settings.gradle.kts
-          sed -i 's/^include(":mnn")$/\/\/include(":mnn")/' settings.gradle.kts
-          sed -i 's/^include(":llama")$/\/\/include(":llama")/' settings.gradle.kts
-          sed -i 's/^include(":mmd")$/\/\/include(":mmd")/' settings.gradle.kts
-          sed -i 's/^include(":fbx")$/\/\/include(":fbx")/' settings.gradle.kts
-          sed -i 's/^include(":terminal")$/\/\/include(":terminal")/' settings.gradle.kts
-          sed -i 's/^include(":showerclient")$/\/\/include(":showerclient")/' settings.gradle.kts
-          sed -i 's/^include(":quickjs")$/\/\/include(":quickjs")/' settings.gradle.kts
+          # Comment out modules that need complex native builds or missing deps in settings.gradle.kts
+          for mod in dragonbones terminal mnn llama mmd fbx showerclient quickjs; do
+            sed -i "s/^include(\":$mod\")$/\\/\\/include(\":$mod\")/" settings.gradle.kts
+          done
+
+          # Comment out the corresponding project dependencies in app/build.gradle.kts
+          for mod in dragonbones terminal mnn llama mmd fbx showerclient quickjs; do
+            sed -i "s/^\(\s*implementation(project(\":$mod\"))\)$/\\/\\/ \1/" app/build.gradle.kts
+          done
 
           # Remove kapt block for JDK compatibility
           sed -i '/kapt {/,/}/d' app/build.gradle.kts || true
@@ -96,6 +96,8 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+          # Exit with Gradle's exit code, not tee's
+          exit ${PIPESTATUS[0]}
 
       - name: Upload APK
         if: success()
