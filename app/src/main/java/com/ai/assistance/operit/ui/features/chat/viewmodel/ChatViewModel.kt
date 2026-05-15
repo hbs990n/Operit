@@ -28,6 +28,7 @@ import com.ai.assistance.operit.data.model.AttachmentInfo
 import com.ai.assistance.operit.data.model.AITool
 import com.ai.assistance.operit.data.model.ChatHistory
 import com.ai.assistance.operit.data.model.ChatMessage
+import com.ai.assistance.operit.data.model.SessionTokenStats
 import com.ai.assistance.operit.data.model.ChatMessageLocatorPreview
 import com.ai.assistance.operit.data.model.FunctionType
 import com.ai.assistance.operit.data.preferences.ApiPreferences
@@ -305,7 +306,32 @@ class ChatViewModel(private val context: Context) : ViewModel() {
     val currentWindowSize: StateFlow<Int> by lazy { tokenStatsDelegate.currentWindowSizeFlow }
     val inputTokenCount: StateFlow<Int> by lazy { tokenStatsDelegate.cumulativeInputTokensFlow }
     val outputTokenCount: StateFlow<Int> by lazy { tokenStatsDelegate.cumulativeOutputTokensFlow }
+    val cachedInputTokenCount: StateFlow<Int> by lazy { tokenStatsDelegate.cumulativeCachedInputTokensFlow }
+    val reasoningTokenCount: StateFlow<Int> by lazy { tokenStatsDelegate.cumulativeReasoningTokensFlow }
+    val apiCallCount: StateFlow<Int> by lazy { tokenStatsDelegate.apiCallCountFlow }
     val perRequestTokenCount: StateFlow<Pair<Int, Int>?> by lazy { tokenStatsDelegate.perRequestTokenCountFlow }
+
+    /** Get comprehensive session token stats for the current chat */
+    fun getSessionTokenStats(): SessionTokenStats? {
+        val chatId = currentChatId.value ?: return null
+        val chatHistory = chatHistories.value.firstOrNull { it.id == chatId } ?: return null
+        val stats = tokenStatsDelegate.getChatTokenStats()
+        return SessionTokenStats(
+            chatId = chatId,
+            title = chatHistory.title,
+            inputTokens = stats.inputTokens,
+            outputTokens = stats.outputTokens,
+            cachedInputTokens = stats.cachedInputTokens,
+            reasoningTokens = stats.reasoningTokens,
+            apiCallCount = stats.apiCallCount,
+            provider = chatHistory.provider.ifEmpty { stats.provider },
+            modelName = chatHistory.modelName.ifEmpty { stats.modelName },
+            contextLimit = if (chatHistory.contextLimit > 0) chatHistory.contextLimit else stats.contextLimit,
+            currentWindowSize = stats.windowSize,
+            createdAt = chatHistory.createdAt,
+            updatedAt = chatHistory.updatedAt
+        )
+    }
 
 
 
@@ -1094,9 +1120,12 @@ class ChatViewModel(private val context: Context) : ViewModel() {
 
     fun saveCurrentChat() {
         viewModelScope.launch {
-            val (inputTokens, outputTokens) = tokenStatsDelegate.getCumulativeTokenCounts()
-            val currentWindowSize = tokenStatsDelegate.getLastCurrentWindowSize()
-            chatHistoryDelegate.saveCurrentChat(inputTokens, outputTokens, currentWindowSize)
+            val stats = tokenStatsDelegate.getChatTokenStats()
+            chatHistoryDelegate.saveCurrentChat(
+                stats.inputTokens, stats.outputTokens, stats.windowSize,
+                stats.cachedInputTokens, stats.reasoningTokens, stats.apiCallCount,
+                stats.provider, stats.modelName, stats.contextLimit
+            )
         }
     }
 
