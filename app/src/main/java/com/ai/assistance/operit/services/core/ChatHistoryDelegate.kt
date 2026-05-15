@@ -35,7 +35,7 @@ class ChatHistoryDelegate(
         private val onTokenStatisticsLoaded: (chatId: String, inputTokens: Int, outputTokens: Int, windowSize: Int) -> Unit,
         private val getEnhancedAiService: () -> EnhancedAIService?,
         private val ensureAiServiceAvailable: () -> Unit = {}, // 确保AI服务可用的回调
-        private val getChatStatistics: () -> Triple<Int, Int, Int> = { Triple(0, 0, 0) }, // 获取（输入token, 输出token, 窗口大小）
+        private val getChatStatistics: () -> TokenStatisticsDelegate.ChatTokenStats = { TokenStatisticsDelegate.ChatTokenStats(0, 0, 0, 0, 0, 0) },
         private val onScrollToBottom: () -> Unit = {} // 滚动到底部事件回调
 ) {
     companion object {
@@ -770,8 +770,8 @@ class ChatHistoryDelegate(
         characterCardId: String? = null
     ) {
         coroutineScope.launch {
-            val (inputTokens, outputTokens, windowSize) = getChatStatistics()
-            saveCurrentChat(inputTokens, outputTokens, windowSize) // 使用获取到的完整统计数据
+            val stats = getChatStatistics()
+            saveCurrentChat(stats.inputTokens, stats.outputTokens, stats.windowSize, stats.cachedInputTokens, stats.reasoningTokens, stats.apiCallCount, stats.provider, stats.modelName, stats.contextLimit) // 使用获取到的完整统计数据
 
             // 获取当前对话ID，以便继承分组
             val currentChatId = _currentChatId.value
@@ -857,8 +857,8 @@ class ChatHistoryDelegate(
             AppLogger.d(TAG, "切换对话到 $chatId (syncToGlobal=$syncToGlobal)，已禁止添加消息")
 
             try {
-                val (inputTokens, outputTokens, windowSize) = getChatStatistics()
-                saveCurrentChat(inputTokens, outputTokens, windowSize) // 切换前使用正确的窗口大小保存
+                val stats = getChatStatistics()
+                saveCurrentChat(stats.inputTokens, stats.outputTokens, stats.windowSize, stats.cachedInputTokens, stats.reasoningTokens, stats.apiCallCount, stats.provider, stats.modelName, stats.contextLimit) // 切换前使用正确的窗口大小保存
 
                 if (syncToGlobal) {
                     chatHistoryManager.setCurrentChatId(chatId)
@@ -893,8 +893,8 @@ class ChatHistoryDelegate(
     /** 创建对话分支 */
     fun createBranch(upToMessageTimestamp: Long? = null) {
         coroutineScope.launch {
-            val (inputTokens, outputTokens, windowSize) = getChatStatistics()
-            saveCurrentChat(inputTokens, outputTokens, windowSize) // 保存当前聊天
+            val stats = getChatStatistics()
+            saveCurrentChat(stats.inputTokens, stats.outputTokens, stats.windowSize, stats.cachedInputTokens, stats.reasoningTokens, stats.apiCallCount, stats.provider, stats.modelName, stats.contextLimit) // 保存当前聊天
 
             val currentChatId = _currentChatId.value
             if (currentChatId != null) {
@@ -1200,6 +1200,12 @@ class ChatHistoryDelegate(
         inputTokens: Int = 0,
         outputTokens: Int = 0,
         actualContextWindowSize: Int = 0,
+        cachedInputTokens: Int = 0,
+        reasoningTokens: Int = 0,
+        apiCallCount: Int = 0,
+        provider: String = "",
+        modelName: String = "",
+        contextLimit: Int = 0,
         chatIdOverride: String? = null
     ) {
         val chatId = chatIdOverride ?: _currentChatId.value
@@ -1214,7 +1220,13 @@ class ChatHistoryDelegate(
                     it,
                     inputTokens,
                     outputTokens,
-                    actualContextWindowSize
+                    actualContextWindowSize,
+                    cachedInputTokens,
+                    reasoningTokens,
+                    apiCallCount,
+                    provider,
+                    modelName,
+                    contextLimit
                 )
             }
         }
@@ -1522,8 +1534,8 @@ class ChatHistoryDelegate(
     /** 创建新分组（通过创建新聊天实现） */
     fun createGroup(groupName: String, characterCardName: String?, characterGroupId: String? = null) {
         coroutineScope.launch {
-            val (inputTokens, outputTokens, windowSize) = getChatStatistics()
-            saveCurrentChat(inputTokens, outputTokens, windowSize)
+            val stats = getChatStatistics()
+            saveCurrentChat(stats.inputTokens, stats.outputTokens, stats.windowSize, stats.cachedInputTokens, stats.reasoningTokens, stats.apiCallCount, stats.provider, stats.modelName, stats.contextLimit)
 
             val newChat = chatHistoryManager.createNewChat(
                 group = groupName,
@@ -1656,8 +1668,7 @@ class ChatHistoryDelegate(
 
     /** 通过回调获取当前token统计数据 */
     private fun getCurrentTokenCounts(): Pair<Int, Int> {
-        // 使用构造函数中传入的回调获取当前token统计数据
         val stats = getChatStatistics()
-        return Pair(stats.first, stats.second)
+        return Pair(stats.inputTokens, stats.outputTokens)
     }
 }
