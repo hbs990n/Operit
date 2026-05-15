@@ -16,4 +16,16 @@ object ToolExecutionLimits {
 
     /** 旧工具结果裁剪：对话中工具结果总字符数超过此阈值才触发裁剪 */
     const val PRUNE_MINIMUM_TOTAL_CHARS = 10_000
+
+    /** Compaction 触发阈值：当前 token 用量占上下文窗口的比例达到此值时触发压缩 */
+    const val COMPACTION_THRESHOLD = 0.75
+
+    /** Compaction 后保留的最近消息轮数（不被压缩） */
+    const val COMPACTION_PROTECT_RECENT_ROUNDS = 2
+
+    /** Doom Loop 检测阈值：连续相同工具调用次数达到此值时强制终止 */
+    const val DOOM_LOOP_THRESHOLD = 3
+
+    /** Agent 循环最大迭代次数，超过则强制停止 */
+    const val MAX_AGENT_LOOP_ITERATIONS = 50
 }
