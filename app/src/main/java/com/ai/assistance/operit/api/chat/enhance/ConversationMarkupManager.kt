@@ -16,7 +16,7 @@ class ConversationMarkupManager {
 
     companion object {
         private const val TOOL_RESULT_TRUNCATION_SUFFIX =
-            "\n[工具结果过长，已截断]"
+            "\n[工具结果过长，已截断。如需查看完整内容，请使用 read_file 工具读取原文件，或使用 grep_code / grep_context 搜索关键内容。]"
 
         /**
          * Creates an 'error' status markup element for a tool.
@@ -150,8 +150,11 @@ class ConversationMarkupManager {
         }
 
         private fun truncatePayload(payload: String, maxChars: Int): String {
-            if (payload.length <= maxChars) {
-                return payload
+            // 先按行数截断
+            val lineLimited = limitLines(payload)
+            // 再按字符数截断
+            if (lineLimited.length <= maxChars) {
+                return lineLimited
             }
             if (maxChars <= 0) {
                 return ""
@@ -159,9 +162,25 @@ class ConversationMarkupManager {
             if (TOOL_RESULT_TRUNCATION_SUFFIX.length >= maxChars) {
                 return TOOL_RESULT_TRUNCATION_SUFFIX.take(maxChars)
             }
-            return payload
+            return lineLimited
                 .take(maxChars - TOOL_RESULT_TRUNCATION_SUFFIX.length)
                 .trimEnd() + TOOL_RESULT_TRUNCATION_SUFFIX
+        }
+
+        /**
+         * 限制工具结果的行数，超出部分截断并附加提示。
+         * 保留头部行作为预览，尾部附加截断提示。
+         */
+        private fun limitLines(payload: String): String {
+            val lines = payload.lines()
+            if (lines.size <= ToolExecutionLimits.MAX_TOOL_RESULT_LINES) {
+                return payload
+            }
+            val keptLines = lines.take(ToolExecutionLimits.MAX_TOOL_RESULT_LINES)
+            val omittedCount = lines.size - ToolExecutionLimits.MAX_TOOL_RESULT_LINES
+            return keptLines.joinToString("\n") +
+                "\n...(${omittedCount} 行已截断)..." +
+                TOOL_RESULT_TRUNCATION_SUFFIX
         }
 
     }
