@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Build
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.ChatMarkupRegex
+import com.ai.assistance.operit.api.chat.enhance.ContextPruner
 import com.ai.assistance.operit.api.chat.enhance.ConversationMarkupManager
 import com.ai.assistance.operit.api.chat.enhance.ConversationRoundManager
 import com.ai.assistance.operit.api.chat.enhance.ConversationService
@@ -2156,6 +2157,19 @@ class EnhancedAIService private constructor(private val context: Context) {
             conversationService.normalizeConversationHistoryForModel(context.conversationHistory)
         context.conversationHistory.clear()
         context.conversationHistory.addAll(normalizedChatHistory)
+
+        // 裁剪旧工具结果：在 Tool Call 模式下，裁剪旧工具结果以降低 Token 消耗
+        val currentConfig = getModelConfigForFunction(
+            functionType = functionType,
+            chatModelConfigIdOverride = chatModelConfigIdOverride,
+            chatModelIndexOverride = chatModelIndexOverride
+        )
+        if (currentConfig.enableToolCall) {
+            val historySnapshot = context.conversationHistory.toList()
+            val prunedHistory = ContextPruner.pruneOldToolResults(historySnapshot)
+            context.conversationHistory.clear()
+            context.conversationHistory.addAll(prunedHistory)
+        }
 
         // Get current conversation history is now just the normalized context history
         val currentChatHistory = context.conversationHistory
