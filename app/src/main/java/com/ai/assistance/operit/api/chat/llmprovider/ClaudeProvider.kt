@@ -216,7 +216,7 @@ class ClaudeProvider(
 
     private suspend fun applyAnthropicUsage(
         usage: JSONObject?,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit,
         source: String,
         overwriteOutputTokens: Boolean
     ): Boolean {
@@ -239,7 +239,8 @@ class ClaudeProvider(
         onTokensUpdated(
             parsed.totalInputTokens,
             parsed.cachedInputTokens,
-            tokenCacheManager.outputTokenCount
+            tokenCacheManager.outputTokenCount,
+            0
         )
         return true
     }
@@ -1240,7 +1241,7 @@ class ClaudeProvider(
             stream: Boolean,
             availableTools: List<ToolPrompt>?,
             preserveThinkInHistory: Boolean,
-            onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+            onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit,
             onNonFatalError: suspend (error: String) -> Unit,
             enableRetry: Boolean
     ): Stream<String> {
@@ -1356,7 +1357,8 @@ class ClaudeProvider(
                 onTokensUpdated(
                     tokenCacheManager.totalInputTokenCount,
                     tokenCacheManager.cachedInputTokenCount,
-                    tokenCacheManager.outputTokenCount
+                    tokenCacheManager.outputTokenCount,
+            0
                 )
                 val request = createRequest(requestBody)
                 client.newCall(request)
@@ -1421,7 +1423,8 @@ class ClaudeProvider(
                                 onTokensUpdated(
                                     tokenCacheManager.totalInputTokenCount,
                                     tokenCacheManager.cachedInputTokenCount,
-                                    tokenCacheManager.outputTokenCount
+                                    tokenCacheManager.outputTokenCount,
+            0
                                 )
                             }
                             return@withContext
@@ -1446,7 +1449,8 @@ class ClaudeProvider(
                                 onTokensUpdated(
                                     tokenCacheManager.totalInputTokenCount,
                                     tokenCacheManager.cachedInputTokenCount,
-                                    tokenCacheManager.outputTokenCount
+                                    tokenCacheManager.outputTokenCount,
+            0
                                 )
                             }
                             return@withContext
@@ -1495,7 +1499,8 @@ class ClaudeProvider(
                                     onTokensUpdated(
                                         tokenCacheManager.totalInputTokenCount,
                                         tokenCacheManager.cachedInputTokenCount,
-                                        tokenCacheManager.outputTokenCount
+                                        tokenCacheManager.outputTokenCount,
+            0
                                     )
                                     emit(content)
                                     receivedContent.append(content)
@@ -1564,7 +1569,8 @@ class ClaudeProvider(
                                                     onTokensUpdated(
                                                         tokenCacheManager.totalInputTokenCount,
                                                         tokenCacheManager.cachedInputTokenCount,
-                                                        tokenCacheManager.outputTokenCount
+                                                        tokenCacheManager.outputTokenCount,
+            0
                                                     )
                                                     emit(initialThinking)
                                                     receivedContent.append(initialThinking)
@@ -1587,7 +1593,8 @@ class ClaudeProvider(
                                                 onTokensUpdated(
                                                     tokenCacheManager.totalInputTokenCount,
                                                     tokenCacheManager.cachedInputTokenCount,
-                                                    tokenCacheManager.outputTokenCount
+                                                    tokenCacheManager.outputTokenCount,
+            0
                                                 )
                                                 emit(content)
                                                 receivedContent.append(content)
@@ -1600,7 +1607,8 @@ class ClaudeProvider(
                                                 onTokensUpdated(
                                                     tokenCacheManager.totalInputTokenCount,
                                                     tokenCacheManager.cachedInputTokenCount,
-                                                    tokenCacheManager.outputTokenCount
+                                                    tokenCacheManager.outputTokenCount,
+            0
                                                 )
                                                 emit(thinking)
                                                 receivedContent.append(thinking)
@@ -1727,7 +1735,8 @@ class ClaudeProvider(
                                     onTokensUpdated(
                                         tokenCacheManager.totalInputTokenCount,
                                         tokenCacheManager.cachedInputTokenCount,
-                                        tokenCacheManager.outputTokenCount
+                                        tokenCacheManager.outputTokenCount,
+            0
                                     )
                                 }
                             } else {
@@ -1746,7 +1755,8 @@ class ClaudeProvider(
                                         onTokensUpdated(
                                             tokenCacheManager.totalInputTokenCount,
                                             tokenCacheManager.cachedInputTokenCount,
-                                            tokenCacheManager.outputTokenCount
+                                            tokenCacheManager.outputTokenCount,
+            0
                                         )
                                         emit(content)
                                         receivedContent.append(content)
@@ -1825,7 +1835,7 @@ class ClaudeProvider(
                 testHistory + PromptTurn(kind = PromptTurnKind.USER, content = "Hi"),
                 emptyList(),
                 false,
-                onTokensUpdated = { _, _, _ -> },
+                onTokensUpdated = { _, _, _, _ -> },
                 onNonFatalError = {},
                 enableRetry = false
             )

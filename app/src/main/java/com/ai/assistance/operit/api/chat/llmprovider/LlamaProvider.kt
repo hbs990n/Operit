@@ -169,7 +169,7 @@ class LlamaProvider(
         stream: Boolean,
         availableTools: List<ToolPrompt>?,
         preserveThinkInHistory: Boolean,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean
     ): Stream<String> = stream {
@@ -273,7 +273,7 @@ class LlamaProvider(
 
         _inputTokenCount = kotlin.runCatching { s.countTokens(prompt) }.getOrElse { 0 }
         _outputTokenCount = 0
-        onTokensUpdated(_inputTokenCount, 0, 0)
+        onTokensUpdated(_inputTokenCount, 0, 0, 0)
 
         val requestedMaxNewTokens = modelParameters
             .find { it.name == "max_tokens" }
@@ -306,7 +306,7 @@ class LlamaProvider(
 
                     kotlin.runCatching {
                         kotlinx.coroutines.runBlocking {
-                            onTokensUpdated(_inputTokenCount, 0, _outputTokenCount)
+                            onTokensUpdated(_inputTokenCount, 0, _outputTokenCount, 0)
                         }
                     }
 

@@ -1025,7 +1025,7 @@ class GeminiProvider(
             stream: Boolean,
             availableTools: List<ToolPrompt>?,
             preserveThinkInHistory: Boolean,
-            onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+            onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit,
             onNonFatalError: suspend (error: String) -> Unit,
             enableRetry: Boolean
     ): Stream<String> {
@@ -1040,7 +1040,8 @@ class GeminiProvider(
         onTokensUpdated(
                 tokenCacheManager.totalInputTokenCount,
                 tokenCacheManager.cachedInputTokenCount,
-                tokenCacheManager.outputTokenCount
+                tokenCacheManager.outputTokenCount,
+                0
         )
 
         AppLogger.d(TAG, "发送消息到Gemini API, 模型: $modelName")
@@ -1095,7 +1096,8 @@ class GeminiProvider(
                 onTokensUpdated(
                         tokenCacheManager.totalInputTokenCount,
                         tokenCacheManager.cachedInputTokenCount,
-                        tokenCacheManager.outputTokenCount
+                        tokenCacheManager.outputTokenCount,
+                0
                 )
                 val request = createRequest(context, requestBody, stream, requestId) // 根据stream参数决定使用流式还是非流式
 
@@ -1357,7 +1359,7 @@ class GeminiProvider(
             response: Response,
             streamCollector: StreamCollector<String>,
             requestId: String,
-            onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+            onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit,
             receivedContent: StringBuilder
     ) {
         AppLogger.d(TAG, "开始处理响应流")
@@ -1579,7 +1581,7 @@ class GeminiProvider(
             response: Response,
             streamCollector: StreamCollector<String>,
             requestId: String,
-            onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+            onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit,
             receivedContent: StringBuilder
     ) {
         AppLogger.d(TAG, "开始处理非流式响应")
@@ -1626,7 +1628,7 @@ class GeminiProvider(
         context: Context,
         json: JSONObject,
         requestId: String,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit
+        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit
     ): String {
         val contentBuilder = StringBuilder()
         val searchSourcesBuilder = StringBuilder()
@@ -1840,7 +1842,8 @@ class GeminiProvider(
                     onTokensUpdated(
                             tokenCacheManager.totalInputTokenCount,
                             tokenCacheManager.cachedInputTokenCount,
-                            tokenCacheManager.outputTokenCount
+                            tokenCacheManager.outputTokenCount,
+                0
                     )
                 }
             }
@@ -1870,7 +1873,8 @@ class GeminiProvider(
                     onTokensUpdated(
                         tokenCacheManager.totalInputTokenCount,
                         tokenCacheManager.cachedInputTokenCount,
-                        tokenCacheManager.outputTokenCount
+                        tokenCacheManager.outputTokenCount,
+                0
                     )
                 }
             }
@@ -1914,7 +1918,7 @@ class GeminiProvider(
                 false,
                 false,
                 null,
-                onTokensUpdated = { _, _, _ -> },
+                onTokensUpdated = { _, _, _, _ -> },
                 onNonFatalError = {},
                 enableRetry = false
             )

@@ -99,6 +99,7 @@ class EnhancedAIService private constructor(private val context: Context) {
         val inputTokens: Int,
         val outputTokens: Int,
         val cachedInputTokens: Int,
+        val reasoningTokens: Int = 0,
     )
 
     companion object {
@@ -466,9 +467,11 @@ class EnhancedAIService private constructor(private val context: Context) {
     private var accumulatedInputTokenCount = 0
     private var accumulatedOutputTokenCount = 0
     private var accumulatedCachedInputTokenCount = 0
+    private var accumulatedReasoningTokenCount = 0
     private var currentRequestInputTokenCount = 0
     private var currentRequestOutputTokenCount = 0
     private var currentRequestCachedInputTokenCount = 0
+    private var currentRequestReasoningTokenCount = 0
 
     // Callbacks
     private var currentResponseCallback: ((content: String, thinking: String?) -> Unit)? = null
@@ -1031,10 +1034,11 @@ class EnhancedAIService private constructor(private val context: Context) {
                                     enableThinking = enableThinking,
                                     stream = stream,
                                     availableTools = availableTools,
-                                    onTokensUpdated = { input, cachedInput, output ->
+                                    onTokensUpdated = { input, cachedInput, output, reasoning ->
                                         currentRequestInputTokenCount = input.coerceAtLeast(0)
                                         currentRequestOutputTokenCount = output.coerceAtLeast(0)
                                         currentRequestCachedInputTokenCount = cachedInput.coerceAtLeast(0)
+                                        currentRequestReasoningTokenCount = reasoning.coerceAtLeast(0)
                                         _perRequestTokenCounts.value = Pair(input, output)
                                     },
                                     onNonFatalError = onNonFatalError
@@ -1135,9 +1139,11 @@ class EnhancedAIService private constructor(private val context: Context) {
                     accumulatedInputTokenCount += inputTokens
                     accumulatedOutputTokenCount += outputTokens
                     accumulatedCachedInputTokenCount += cachedInputTokens
+                    accumulatedReasoningTokenCount += currentRequestReasoningTokenCount
                     currentRequestInputTokenCount = 0
                     currentRequestOutputTokenCount = 0
                     currentRequestCachedInputTokenCount = 0
+                    currentRequestReasoningTokenCount = 0
                     apiPreferences.updateTokensForProviderModel(serviceForFunction.providerModel, inputTokens, outputTokens, cachedInputTokens)
                     
                     // Update request count
@@ -2372,10 +2378,11 @@ class EnhancedAIService private constructor(private val context: Context) {
                                 enableThinking = enableThinking,
                                 stream = stream,
                                 availableTools = availableTools,
-                                onTokensUpdated = { input, cachedInput, output ->
+                                onTokensUpdated = { input, cachedInput, output, reasoning ->
                                     currentRequestInputTokenCount = input.coerceAtLeast(0)
                                     currentRequestOutputTokenCount = output.coerceAtLeast(0)
                                     currentRequestCachedInputTokenCount = cachedInput.coerceAtLeast(0)
+                                    currentRequestReasoningTokenCount = reasoning.coerceAtLeast(0)
                                     _perRequestTokenCounts.value = Pair(input, output)
                                 },
                                 onNonFatalError = onNonFatalError
@@ -2471,9 +2478,11 @@ class EnhancedAIService private constructor(private val context: Context) {
                 accumulatedInputTokenCount += inputTokens
                 accumulatedOutputTokenCount += outputTokens
                 accumulatedCachedInputTokenCount += cachedInputTokens
+                accumulatedReasoningTokenCount += currentRequestReasoningTokenCount
                 currentRequestInputTokenCount = 0
                 currentRequestOutputTokenCount = 0
                 currentRequestCachedInputTokenCount = 0
+                currentRequestReasoningTokenCount = 0
                 apiPreferences.updateTokensForProviderModel(serviceForFunction.providerModel, inputTokens, outputTokens, cachedInputTokens)
                 
                 // Update request count
@@ -2558,26 +2567,40 @@ class EnhancedAIService private constructor(private val context: Context) {
         return accumulatedCachedInputTokenCount
     }
 
+    val cachedInputTokenCount: Int
+        get() = accumulatedCachedInputTokenCount
+
+    val reasoningTokenCount: Int
+        get() = accumulatedReasoningTokenCount
+
+    fun getCurrentReasoningTokenCount(): Int {
+        return accumulatedReasoningTokenCount
+    }
+
     fun captureCurrentTurnTokenSnapshot(): TurnTokenSnapshot {
         return TurnTokenSnapshot(
             inputTokens = (accumulatedInputTokenCount + currentRequestInputTokenCount).coerceAtLeast(0),
             outputTokens = (accumulatedOutputTokenCount + currentRequestOutputTokenCount).coerceAtLeast(0),
             cachedInputTokens =
-                (accumulatedCachedInputTokenCount + currentRequestCachedInputTokenCount).coerceAtLeast(0)
+                (accumulatedCachedInputTokenCount + currentRequestCachedInputTokenCount).coerceAtLeast(0),
+            reasoningTokens = (accumulatedReasoningTokenCount + currentRequestReasoningTokenCount).coerceAtLeast(0)
         )
     }
 
     fun setCurrentTurnTokenCounts(
         inputTokens: Int,
         outputTokens: Int,
-        cachedInputTokens: Int = 0
+        cachedInputTokens: Int = 0,
+        reasoningTokens: Int = 0
     ) {
         accumulatedInputTokenCount = inputTokens.coerceAtLeast(0)
         accumulatedOutputTokenCount = outputTokens.coerceAtLeast(0)
         accumulatedCachedInputTokenCount = cachedInputTokens.coerceAtLeast(0)
+        accumulatedReasoningTokenCount = reasoningTokens.coerceAtLeast(0)
         currentRequestInputTokenCount = 0
         currentRequestOutputTokenCount = 0
         currentRequestCachedInputTokenCount = 0
+        currentRequestReasoningTokenCount = 0
         _perRequestTokenCounts.value =
             Pair(accumulatedInputTokenCount, accumulatedOutputTokenCount)
         AppLogger.d(
