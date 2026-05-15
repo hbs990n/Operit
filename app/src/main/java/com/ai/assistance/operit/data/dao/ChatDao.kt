@@ -37,7 +37,7 @@ interface ChatDao {
 
     /** 更新聊天元数据 */
     @Query(
-            "UPDATE chats SET updatedAt = :timestamp, title = :title, inputTokens = :inputTokens, outputTokens = :outputTokens, currentWindowSize = :currentWindowSize WHERE id = :chatId"
+            "UPDATE chats SET updatedAt = :timestamp, title = :title, inputTokens = :inputTokens, outputTokens = :outputTokens, currentWindowSize = :currentWindowSize, cachedInputTokens = :cachedInputTokens, reasoningTokens = :reasoningTokens, apiCallCount = :apiCallCount, provider = :provider, modelName = :modelName, contextLimit = :contextLimit WHERE id = :chatId"
     )
     suspend fun updateChatMetadata(
             chatId: String,
@@ -45,7 +45,13 @@ interface ChatDao {
             timestamp: Long,
             inputTokens: Int,
             outputTokens: Int,
-            currentWindowSize: Int
+            currentWindowSize: Int,
+            cachedInputTokens: Int = 0,
+            reasoningTokens: Int = 0,
+            apiCallCount: Int = 0,
+            provider: String = "",
+            modelName: String = "",
+            contextLimit: Int = 0
     )
 
     /** 更新聊天标题 */
