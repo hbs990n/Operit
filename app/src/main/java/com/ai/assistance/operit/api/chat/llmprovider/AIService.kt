@@ -15,6 +15,10 @@ interface AIService {
     /** 缓存命中的输入token计数 */
     val cachedInputTokenCount: Int
 
+    /** 推理token计数 */
+    val reasoningTokenCount: Int
+        get() = 0
+
     /** 输出token计数 */
     val outputTokenCount: Int
 
@@ -56,7 +60,7 @@ interface AIService {
             stream: Boolean = true,
             availableTools: List<ToolPrompt>? = null,
             preserveThinkInHistory: Boolean = false, // 新增参数，控制是否保留历史中的思考过程
-            onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit = { _, _, _ -> },
+            onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit = { _, _, _, _ -> },
             onNonFatalError: suspend (error: String) -> Unit = {},
             enableRetry: Boolean = true
     ): Stream<String>
