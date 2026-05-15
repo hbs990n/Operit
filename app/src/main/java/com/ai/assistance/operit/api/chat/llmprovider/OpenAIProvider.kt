@@ -134,7 +134,7 @@ open class OpenAIProvider(
 
     private suspend fun applyUsageToCounters(
         usage: JSONObject?,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit
+        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit
     ) {
         val parsed = OpenAIResponsesPayloadAdapter.parseUsageCounts(usage) ?: return
         tokenCacheManager.updateActualTokens(parsed.actualInputTokens, parsed.cachedInputTokens)
@@ -142,7 +142,8 @@ open class OpenAIProvider(
         onTokensUpdated(
             parsed.totalInputTokens,
             parsed.cachedInputTokens,
-            tokenCacheManager.outputTokenCount
+            tokenCacheManager.outputTokenCount,
+            parsed.reasoningTokens
         )
     }
 
@@ -238,7 +239,7 @@ open class OpenAIProvider(
                      testHistory,
                      emptyList(),
                      false,
-                     onTokensUpdated = { _, _, _ -> },
+                     onTokensUpdated = { _, _, _, _ -> },
                      onNonFatalError = {},
                      enableRetry = false
                  )
@@ -1320,7 +1321,7 @@ open class OpenAIProvider(
         private val receivedContent: StringBuilder,
         private val emit: suspend (String) -> Unit,
         private val eventChannel: com.ai.assistance.operit.util.stream.MutableSharedStream<TextStreamEvent>,
-        private val onTokensUpdated: suspend (Int, Int, Int) -> Unit
+        private val onTokensUpdated: suspend (Int, Int, Int, Int) -> Unit
     ) {
         private val savepointLengths = mutableMapOf<String, Int>()
 
@@ -1332,7 +1333,9 @@ open class OpenAIProvider(
                 onTokensUpdated(
                     tokenCacheManager.totalInputTokenCount,
                     tokenCacheManager.cachedInputTokenCount,
-                    tokenCacheManager.outputTokenCount
+                    tokenCacheManager.outputTokenCount,
+                0,
+                    0
                 )
             }
         }
@@ -1346,7 +1349,9 @@ open class OpenAIProvider(
                 onTokensUpdated(
                     tokenCacheManager.totalInputTokenCount,
                     tokenCacheManager.cachedInputTokenCount,
-                    tokenCacheManager.outputTokenCount
+                    tokenCacheManager.outputTokenCount,
+                0,
+                    0
                 )
             }
         }
@@ -1869,7 +1874,7 @@ open class OpenAIProvider(
         jsonResponse: JSONObject,
         state: StreamingState,
         emitter: StreamEmitter,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit
+        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit
     ) {
         val eventType = jsonResponse.optString("type", "")
 
@@ -2009,7 +2014,7 @@ open class OpenAIProvider(
         finishReason: String,
         state: StreamingState,
         emitter: StreamEmitter,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit
+        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit
     ) {
         val normalizedFinishReason = finishReason.trim()
         if (normalizedFinishReason.isEmpty() ||
@@ -2026,7 +2031,8 @@ open class OpenAIProvider(
             onTokensUpdated(
                 tokenCacheManager.totalInputTokenCount,
                 tokenCacheManager.cachedInputTokenCount,
-                tokenCacheManager.outputTokenCount
+                tokenCacheManager.outputTokenCount,
+                0
             )
 
             // 清空累积器
@@ -2087,7 +2093,7 @@ open class OpenAIProvider(
         jsonResponse: JSONObject,
         state: StreamingState,
         emitter: StreamEmitter,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit
+        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit
     ) {
         val usage = jsonResponse.optJSONObject("usage")
         val choices = jsonResponse.optJSONArray("choices")
@@ -2156,7 +2162,7 @@ open class OpenAIProvider(
     private suspend fun processStreamingResponse(
         reader: java.io.BufferedReader,
         emitter: StreamEmitter,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit,
         context: Context
     ) {
         val state = StreamingState()
@@ -2252,7 +2258,7 @@ open class OpenAIProvider(
         stream: Boolean,
         availableTools: List<ToolPrompt>?,
         preserveThinkInHistory: Boolean,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean
     ): Stream<String> {
@@ -2264,7 +2270,8 @@ open class OpenAIProvider(
             onTokensUpdated(
                 tokenCacheManager.totalInputTokenCount,
                 tokenCacheManager.cachedInputTokenCount,
-                tokenCacheManager.outputTokenCount
+                tokenCacheManager.outputTokenCount,
+                0
             )
 
             AppLogger.d(
@@ -2313,7 +2320,8 @@ open class OpenAIProvider(
                 onTokensUpdated(
                     tokenCacheManager.totalInputTokenCount,
                     tokenCacheManager.cachedInputTokenCount,
-                    tokenCacheManager.outputTokenCount
+                    tokenCacheManager.outputTokenCount,
+                0
                 )
                 val attemptNumber = retryCount + 1
                 val requestTraceId = "llm_${attemptNumber}_${UUID.randomUUID().toString().substring(0, 8)}"

@@ -108,7 +108,7 @@ internal class ToolPkgJsAiProviderService(
         stream: Boolean,
         availableTools: List<ToolPrompt>?,
         preserveThinkInHistory: Boolean,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean
     ): Stream<String> = com.ai.assistance.operit.util.stream.stream {
@@ -137,7 +137,8 @@ internal class ToolPkgJsAiProviderService(
                         onTokensUpdated(
                             currentInputTokenCount,
                             currentCachedInputTokenCount,
-                            currentOutputTokenCount
+                            currentOutputTokenCount,
+                            0
                         )
                     }
                     extractNonFatalError(intermediateDecoded)?.let { error ->
@@ -156,7 +157,8 @@ internal class ToolPkgJsAiProviderService(
             onTokensUpdated(
                 currentInputTokenCount,
                 currentCachedInputTokenCount,
-                currentOutputTokenCount
+                currentOutputTokenCount,
+                0
             )
         }
         extractNonFatalError(decoded)?.let { error ->
