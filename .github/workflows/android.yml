@@ -24,6 +24,12 @@ jobs:
         run: |
           sdkmanager --install "ndk;27.0.12077973" "build-tools;35.0.0" "platforms;android-36"
           echo "sdk.dir=$ANDROID_HOME" > local.properties
+      - name: Configure signing
+        run: |
+          echo "RELEASE_STORE_FILE=${{ github.workspace }}/ci-debug.keystore" >> local.properties
+          echo "RELEASE_STORE_PASSWORD=operit2024" >> local.properties
+          echo "RELEASE_KEY_ALIAS=ci-debug" >> local.properties
+          echo "RELEASE_KEY_PASSWORD=operit2024" >> local.properties
       - name: Build
         run: |
           chmod +x gradlew
