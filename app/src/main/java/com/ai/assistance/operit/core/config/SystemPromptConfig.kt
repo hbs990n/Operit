@@ -365,7 +365,7 @@ AVAILABLE_TOOLS_SECTION""".trimIndent()
 
     // Build prompt with appropriate sections
     var prompt = templateToUse
-        .replace("ACTIVE_PACKAGES_SECTION", if (enableTools) packagesSection.toString() else "")
+        .replace("ACTIVE_PACKAGES_SECTION", if (enableTools && !useToolCallApi) packagesSection.toString() else "")
         .replace("WORKSPACE_GUIDELINES_SECTION", workspaceGuidelines)
 
     // Determine the available tools string based on tool visibility and recognition capabilities.
