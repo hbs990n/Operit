@@ -23,7 +23,13 @@ data class ChatEntity(
         val parentChatId: String? = null,
         val characterCardName: String? = null,
         val characterGroupId: String? = null,
-        val locked: Boolean = false
+        val locked: Boolean = false,
+        val cachedInputTokens: Int = 0,
+        val reasoningTokens: Int = 0,
+        val apiCallCount: Int = 0,
+        val provider: String = "",
+        val modelName: String = "",
+        val contextLimit: Int = 0
 ) {
     /** 转换为ChatHistory对象（供UI层使用） */
     fun toChatHistory(messages: List<ChatMessage>): ChatHistory {
@@ -51,7 +57,13 @@ data class ChatEntity(
                 parentChatId = parentChatId,
                 characterCardName = characterCardName,
                 characterGroupId = characterGroupId,
-                locked = locked
+                locked = locked,
+                cachedInputTokens = cachedInputTokens,
+                reasoningTokens = reasoningTokens,
+                apiCallCount = apiCallCount,
+                provider = provider,
+                modelName = modelName,
+                contextLimit = contextLimit
         )
     }
 
@@ -84,7 +96,13 @@ data class ChatEntity(
                     parentChatId = chatHistory.parentChatId,
                     characterCardName = chatHistory.characterCardName,
                     characterGroupId = chatHistory.characterGroupId,
-                    locked = chatHistory.locked
+                    locked = chatHistory.locked,
+                    cachedInputTokens = chatHistory.cachedInputTokens,
+                    reasoningTokens = chatHistory.reasoningTokens,
+                    apiCallCount = chatHistory.apiCallCount,
+                    provider = chatHistory.provider,
+                    modelName = chatHistory.modelName,
+                    contextLimit = chatHistory.contextLimit
             )
         }
     }
