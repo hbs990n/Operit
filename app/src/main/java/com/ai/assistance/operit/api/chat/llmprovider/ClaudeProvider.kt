@@ -565,6 +565,33 @@ class ClaudeProvider(
         return null
     }
 
+    /**
+     * 查找 messagesArray 中指定 role 的第 N 个（从后往前数）消息的最后一个 content block。
+     * @param messagesArray 消息数组
+     * @param role 目标角色（如 "user"）
+     * @param reverseIndex 从后往前数的索引，0=最后一个，1=倒数第二个
+     * @return 找到的 content block，未找到返回 null
+     */
+    private fun findNthLastContentBlockByRole(messagesArray: JSONArray, role: String, reverseIndex: Int): JSONObject? {
+        var foundCount = 0
+        for (messageIndex in messagesArray.length() - 1 downTo 0) {
+            val messageObject = messagesArray.optJSONObject(messageIndex) ?: continue
+            if (messageObject.optString("role") != role) continue
+            if (foundCount < reverseIndex) {
+                foundCount++
+                continue
+            }
+            val contentArray = messageObject.optJSONArray("content") ?: continue
+            for (contentIndex in contentArray.length() - 1 downTo 0) {
+                val contentBlock = contentArray.optJSONObject(contentIndex)
+                if (contentBlock != null) {
+                    return contentBlock
+                }
+            }
+        }
+        return null
+    }
+
     private fun applyStableCacheBreakpoints(
         tools: JSONArray?,
         systemBlocks: JSONArray?,
@@ -572,6 +599,7 @@ class ClaudeProvider(
     ): Int {
         var breakpoints = 0
 
+        // Breakpoint 1: 最后一个工具定义（工具定义在 Agent 循环中稳定不变）
         if (tools != null && tools.length() > 0) {
             val lastTool = tools.optJSONObject(tools.length() - 1)
             if (lastTool != null && attachCacheControlIfAbsent(lastTool)) {
@@ -579,6 +607,7 @@ class ClaudeProvider(
             }
         }
 
+        // Breakpoint 2: 最后一个系统提示块（系统提示在 Agent 循环中稳定不变）
         if (systemBlocks != null && systemBlocks.length() > 0) {
             val lastSystemBlock = systemBlocks.optJSONObject(systemBlocks.length() - 1)
             if (lastSystemBlock != null && attachCacheControlIfAbsent(lastSystemBlock)) {
@@ -586,8 +615,17 @@ class ClaudeProvider(
             }
         }
 
-        val lastMessageBlock = findLastContentBlock(messagesArray)
-        if (lastMessageBlock != null && attachCacheControlIfAbsent(lastMessageBlock)) {
+        // Breakpoint 3: 最后一个 user 消息的最后一个 content block
+        // 相比在任意最后 content block 添加缓存标记，user 消息在 Agent 循环中更稳定
+        val lastUserBlock = findNthLastContentBlockByRole(messagesArray, "user", 0)
+        if (lastUserBlock != null && attachCacheControlIfAbsent(lastUserBlock)) {
+            breakpoints++
+        }
+
+        // Breakpoint 4: 倒数第二个 user 消息的最后一个 content block
+        // Anthropic 最多支持 4 个 cache breakpoints，利用第 4 个位置增加缓存命中率
+        val secondLastUserBlock = findNthLastContentBlockByRole(messagesArray, "user", 1)
+        if (secondLastUserBlock != null && attachCacheControlIfAbsent(secondLastUserBlock)) {
             breakpoints++
         }
 

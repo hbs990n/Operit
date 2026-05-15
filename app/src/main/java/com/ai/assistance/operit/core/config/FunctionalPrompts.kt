@@ -245,6 +245,16 @@ object FunctionalPrompts {
         return if (useEnglish) "Please summarize the conversation as instructed." else "请按照要求总结对话内容"
     }
 
+    /**
+     * Compaction 专用用户消息：告知模型这是上下文压缩摘要，而非对话结束摘要。
+     */
+    fun compactionUserMessage(useEnglish: Boolean): String {
+        return if (useEnglish)
+            "The conversation is getting long. Please generate a compact summary of the conversation so far as instructed. Focus on preserving task progress, key decisions, and critical context."
+        else
+            "对话内容较长，请按照要求生成一份精简的上下文压缩摘要，重点保留任务进度、关键决策和重要上下文信息。"
+    }
+
     fun waifuEmotionRule(emotionListText: String): String {
         return "**表达情绪规则：你必须在每个句末判断句中包含的情绪或增强语气，并使用<emotion>标签在句末插入情绪状态。后续会根据情绪生成表情包。可用情绪包括：$emotionListText。例如：<emotion>happy</emotion>、<emotion>miss_you</emotion>等。如果没有这些情绪则不插入。**"
     }

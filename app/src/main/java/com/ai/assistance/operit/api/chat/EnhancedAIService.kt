@@ -5,7 +5,9 @@ import android.content.Intent
 import android.os.Build
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.ChatMarkupRegex
+import com.ai.assistance.operit.api.chat.enhance.ContextCompactor
 import com.ai.assistance.operit.api.chat.enhance.ContextPruner
+import com.ai.assistance.operit.api.chat.enhance.DoomLoopDetector
 import com.ai.assistance.operit.api.chat.enhance.ConversationMarkupManager
 import com.ai.assistance.operit.api.chat.enhance.ConversationRoundManager
 import com.ai.assistance.operit.api.chat.enhance.ConversationService
@@ -417,6 +419,9 @@ class EnhancedAIService private constructor(private val context: Context) {
         val isConversationActive: AtomicBoolean = AtomicBoolean(true),
         val conversationHistory: MutableList<PromptTurn>,
         val eventChannel: MutableSharedStream<TextStreamEvent>,
+        val iterationCount: AtomicInteger = AtomicInteger(0),
+        val doomLoopDetector: DoomLoopDetector = DoomLoopDetector(),
+        val compactionDone: AtomicBoolean = AtomicBoolean(false),
     )
 
     private val activeExecutionContexts = ConcurrentHashMap<Int, MessageExecutionContext>()
@@ -1845,6 +1850,69 @@ class EnhancedAIService private constructor(private val context: Context) {
                     startTimeMs = startTime,
                     details = "count=${extractedToolInvocations.size}"
                 )
+
+                // Agent 循环迭代计数 + 最大迭代次数检查
+                val currentIteration = context.iterationCount.incrementAndGet()
+                if (currentIteration > ToolExecutionLimits.MAX_AGENT_LOOP_ITERATIONS) {
+                    AppLogger.w(TAG, "Agent 循环迭代次数 ($currentIteration) 超过最大限制 (${ToolExecutionLimits.MAX_AGENT_LOOP_ITERATIONS})，强制停止")
+                    finalizeAssistantResponse(
+                        context = context,
+                        content = context.roundManager.getDisplayContent(),
+                        enableMemoryAutoUpdate = enableMemoryAutoUpdate,
+                        onNonFatalError = onNonFatalError,
+                        isSubTask = isSubTask,
+                        chatId = chatId,
+                        characterName = characterName,
+                        avatarUri = avatarUri,
+                        notifyReplyOverride = notifyReplyOverride,
+                        preferenceProfileIdOverride = preferenceProfileIdOverride
+                    )
+                    return
+                }
+
+                // Doom Loop 检测：检查工具调用是否重复
+                var doomLoopWarning: String? = null
+                var doomLoopStop = false
+                for (invocation in extractedToolInvocations) {
+                    val toolName = invocation.tool.name
+                    val toolInput = invocation.rawText
+                    when (context.doomLoopDetector.check(toolName, toolInput)) {
+                        DoomLoopDetector.DoomLoopResult.STOP -> {
+                            doomLoopStop = true
+                            break
+                        }
+                        DoomLoopDetector.DoomLoopResult.WARNING -> {
+                            doomLoopWarning = "[警告: 你已连续多次使用相同工具($toolName)和参数，请检查是否陷入循环。尝试不同的参数或换一种方法。]"
+                        }
+                        DoomLoopDetector.DoomLoopResult.OK -> { /* 正常 */ }
+                    }
+                }
+
+                if (doomLoopStop) {
+                    AppLogger.w(TAG, "Doom Loop 检测触发停止，强制终止 Agent 循环")
+                    finalizeAssistantResponse(
+                        context = context,
+                        content = context.roundManager.getDisplayContent(),
+                        enableMemoryAutoUpdate = enableMemoryAutoUpdate,
+                        onNonFatalError = onNonFatalError,
+                        isSubTask = isSubTask,
+                        chatId = chatId,
+                        characterName = characterName,
+                        avatarUri = avatarUri,
+                        notifyReplyOverride = notifyReplyOverride,
+                        preferenceProfileIdOverride = preferenceProfileIdOverride
+                    )
+                    return
+                }
+
+                // 如果有 Doom Loop 警告，注入到对话历史让 AI 自我纠正
+                if (doomLoopWarning != null) {
+                    val warningStatus = ConversationMarkupManager.createWarningStatus(doomLoopWarning)
+                    context.conversationHistory.add(
+                        PromptTurn(kind = PromptTurnKind.TOOL_RESULT, content = warningStatus)
+                    )
+                }
+
                 handleToolInvocation(
                         extractedToolInvocations,
                         context,
@@ -2223,17 +2291,64 @@ class EnhancedAIService private constructor(private val context: Context) {
         )
 
         // After a tool call, check if token usage exceeds the threshold
+        // 优先尝试 Compaction（上下文压缩），压缩后继续 Agent 循环
+        // 如果已压缩过或压缩后仍超限，则停止对话
         if (maxTokens > 0) {
             val usageRatio = currentTokens.toDouble() / maxTokens.toDouble()
 
-            if (usageRatio >= tokenUsageThreshold) {
+            if (usageRatio >= ToolExecutionLimits.COMPACTION_THRESHOLD && !context.compactionDone.get()) {
+                AppLogger.d(TAG, "Token 使用率 $usageRatio 达到压缩阈值 ${ToolExecutionLimits.COMPACTION_THRESHOLD}，尝试上下文压缩")
+                val compactedHistory = ContextCompactor.compactIfNeeded(
+                    history = context.conversationHistory.toList(),
+                    currentTokens = currentTokens,
+                    maxTokens = maxTokens,
+                    conversationService = conversationService,
+                    multiServiceManager = multiServiceManager
+                )
+                if (compactedHistory != null) {
+                    context.conversationHistory.clear()
+                    context.conversationHistory.addAll(compactedHistory)
+                    context.compactionDone.set(true)
+                    AppLogger.d(TAG, "上下文压缩成功，继续 Agent 循环")
+                    // 重新估算 token 用量
+                    val newTokens = estimatePreparedRequestWindow(
+                        serviceForFunction = serviceForFunction,
+                        preparedHistory = context.conversationHistory,
+                        availableTools = availableTools,
+                        publishEstimate = true
+                    )
+                    val newRatio = newTokens.toDouble() / maxTokens.toDouble()
+                    AppLogger.d(TAG, "压缩后 Token 使用率: $newRatio")
+                    // 压缩后仍超限，停止对话
+                    if (newRatio >= tokenUsageThreshold) {
+                        AppLogger.w(TAG, "压缩后 Token 使用率 ($newRatio) 仍超过终止阈值 ($tokenUsageThreshold)，停止对话")
+                        onTokenLimitExceeded?.invoke()
+                        context.isConversationActive.set(false)
+                        if (!isSubTask) {
+                            stopAiService(characterName, avatarUri)
+                        }
+                        return
+                    }
+                } else {
+                    // 压缩失败，直接走原有超限逻辑
+                    if (usageRatio >= tokenUsageThreshold) {
+                        AppLogger.w(TAG, "Token usage ($usageRatio) exceeds threshold ($tokenUsageThreshold) after tool call. Compaction failed, triggering summary.")
+                        onTokenLimitExceeded?.invoke()
+                        context.isConversationActive.set(false)
+                        if (!isSubTask) {
+                            stopAiService(characterName, avatarUri)
+                        }
+                        return
+                    }
+                }
+            } else if (usageRatio >= tokenUsageThreshold) {
+                // 已执行过 compaction 或未达 compaction 阈值但已达终止阈值
                 AppLogger.w(TAG, "Token usage ($usageRatio) exceeds threshold ($tokenUsageThreshold) after tool call. Triggering summary.")
                 onTokenLimitExceeded?.invoke()
                 context.isConversationActive.set(false)
                 if (!isSubTask) {
                     stopAiService(characterName, avatarUri)
                 }
-                // 关键修复：在触发总结后，直接返回，因为后续流程将由回调处理
                 return
             }
         }
