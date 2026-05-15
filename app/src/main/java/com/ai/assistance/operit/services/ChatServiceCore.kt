@@ -113,9 +113,12 @@ class ChatServiceCore(
                 }
             },
             getChatStatistics = {
-                val (inputTokens, outputTokens) = tokenStatisticsDelegate.getCumulativeTokenCounts()
-                val windowSize = tokenStatisticsDelegate.getLastCurrentWindowSize()
-                Triple(inputTokens, outputTokens, windowSize)
+                val stats = tokenStatisticsDelegate.getChatTokenStats()
+                stats.copy(
+                    provider = apiConfigDelegate.apiProviderType.value.name,
+                    modelName = apiConfigDelegate.modelName.value,
+                    contextLimit = apiConfigDelegate.contextLength.value.toInt()
+                )
             },
             onScrollToBottom = {
                 messageProcessingDelegate.scrollToBottom()
@@ -146,9 +149,12 @@ class ChatServiceCore(
                 chatHistoryDelegate.addMessageToChat(message, chatId)
             },
             saveCurrentChat = {
-                val (inputTokens, outputTokens) = tokenStatisticsDelegate.getCumulativeTokenCounts()
-                val windowSize = tokenStatisticsDelegate.getLastCurrentWindowSize()
-                chatHistoryDelegate.saveCurrentChat(inputTokens, outputTokens, windowSize)
+                val stats = tokenStatisticsDelegate.getChatTokenStats()
+                chatHistoryDelegate.saveCurrentChat(
+                    stats.inputTokens, stats.outputTokens, stats.windowSize,
+                    stats.cachedInputTokens, stats.reasoningTokens, stats.apiCallCount,
+                    stats.provider, stats.modelName, stats.contextLimit
+                )
             },
             showErrorMessage = { error ->
                 AppLogger.e(TAG, "错误: $error")
@@ -159,18 +165,24 @@ class ChatServiceCore(
             },
             onTurnComplete = { chatId, service, nextWindowSize, turnOptions ->
                 tokenStatisticsDelegate.updateCumulativeStatistics(chatId, service)
-                val (inputTokens, outputTokens) = tokenStatisticsDelegate.getCumulativeTokenCounts(chatId)
-                val windowSize = nextWindowSize ?: tokenStatisticsDelegate.getLastCurrentWindowSize(chatId)
-                tokenStatisticsDelegate.setTokenCounts(chatId, inputTokens, outputTokens, windowSize)
+                val stats = tokenStatisticsDelegate.getChatTokenStats(chatId)
+                val windowSize = nextWindowSize ?: stats.windowSize
+                tokenStatisticsDelegate.setTokenCounts(chatId, stats.inputTokens, stats.outputTokens, windowSize)
                 if (turnOptions.persistTurn) {
                     chatHistoryDelegate.saveCurrentChat(
-                        inputTokens,
-                        outputTokens,
+                        stats.inputTokens,
+                        stats.outputTokens,
                         windowSize,
+                        cachedInputTokens = stats.cachedInputTokens,
+                        reasoningTokens = stats.reasoningTokens,
+                        apiCallCount = stats.apiCallCount,
+                        provider = stats.provider,
+                        modelName = stats.modelName,
+                        contextLimit = stats.contextLimit,
                         chatIdOverride = chatId
                     )
                 }
-                additionalOnTurnComplete?.invoke(chatId, inputTokens, outputTokens, windowSize)
+                additionalOnTurnComplete?.invoke(chatId, stats.inputTokens, stats.outputTokens, windowSize)
             },
             getIsAutoReadEnabled = {
                 apiConfigDelegate.enableAutoRead.value
@@ -243,7 +255,7 @@ class ChatServiceCore(
     fun cancelCurrentMessage() {
         // 先取消总结（如果正在进行）
         messageCoordinationDelegate.cancelSummary()
-        // 然后取消“当前聊天”的消息处理
+        // 然后取消"当前聊天"的消息处理
         val chatId = chatHistoryDelegate.currentChatId.value
         if (chatId != null) {
             messageProcessingDelegate.cancelMessage(chatId)
@@ -297,7 +309,7 @@ class ChatServiceCore(
     }
 
     /**
-     * 将当前本地 chatId 写回全局 currentChatId，用于“返回主应用”时同步。
+     * 将当前本地 chatId 写回全局 currentChatId，用于"返回主应用"时同步。
      */
     fun syncCurrentChatIdToGlobal() {
         val chatId = chatHistoryDelegate.currentChatId.value ?: return
