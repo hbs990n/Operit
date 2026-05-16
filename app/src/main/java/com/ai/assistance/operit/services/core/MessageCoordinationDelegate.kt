@@ -252,25 +252,31 @@ class MessageCoordinationDelegate(
                 chatModelIndexOverride = effectiveChatModelIndexOverride,
                 preferenceProfileIdOverride = effectivePreferenceProfileIdOverride
             )
-        val (inputTokens, outputTokens) = tokenStatsDelegate.getCumulativeTokenCounts(targetChatId)
+        val stats = tokenStatsDelegate.getChatTokenStats(targetChatId)
         chatHistoryDelegate.saveCurrentChat(
-            inputTokens = inputTokens,
-            outputTokens = outputTokens,
+            inputTokens = stats.inputTokens,
+            outputTokens = stats.outputTokens,
             actualContextWindowSize = newWindowSize,
+            cachedInputTokens = stats.cachedInputTokens,
+            reasoningTokens = stats.reasoningTokens,
+            apiCallCount = stats.apiCallCount,
+            provider = stats.provider,
+            modelName = stats.modelName,
+            contextLimit = stats.contextLimit,
             chatIdOverride = targetChatId
         )
         withContext(Dispatchers.Main) {
             tokenStatsDelegate.setTokenCounts(
                 targetChatId,
-                inputTokens,
-                outputTokens,
+                stats.inputTokens,
+                stats.outputTokens,
                 newWindowSize
             )
         }
         AppLogger.d(
             TAG,
             "上下文窗口已刷新: chatId=$targetChatId, window=$newWindowSize, " +
-                "input=$inputTokens, output=$outputTokens, service=${service.javaClass.simpleName}, " +
+                "input=${stats.inputTokens}, output=${stats.outputTokens}, service=${service.javaClass.simpleName}, " +
                 "promptType=$effectivePromptFunctionType"
         )
         return newWindowSize

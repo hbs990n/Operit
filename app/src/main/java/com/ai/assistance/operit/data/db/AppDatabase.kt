@@ -16,7 +16,7 @@ import com.ai.assistance.operit.data.model.MessageVariantEntity
 /** 应用数据库，包含聊天表和消息表 */
 @Database(
     entities = [ChatEntity::class, MessageEntity::class, MessageVariantEntity::class],
-    version = 19,
+    version = 20,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -211,6 +211,19 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        private val MIGRATION_19_20 =
+            object : Migration(19, 20) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE chats ADD COLUMN `cachedInputTokens` INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE chats ADD COLUMN `reasoningTokens` INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE chats ADD COLUMN `apiCallCount` INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE chats ADD COLUMN `provider` TEXT NOT NULL DEFAULT ''")
+                    db.execSQL("ALTER TABLE chats ADD COLUMN `modelName` TEXT NOT NULL DEFAULT ''")
+                    db.execSQL("ALTER TABLE chats ADD COLUMN `contextLimit` INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE messages ADD COLUMN `reasoningTokens` INTEGER NOT NULL DEFAULT 0")
+                }
+            }
+
         // 定义从版本2到3的迁移
         private val MIGRATION_2_3 =
             object : Migration(2, 3) {
@@ -326,7 +339,8 @@ abstract class AppDatabase : RoomDatabase() {
                                 MIGRATION_15_16,
                                 MIGRATION_16_17,
                                 MIGRATION_17_18,
-                                MIGRATION_18_19
+                                MIGRATION_18_19,
+                                MIGRATION_19_20
                             ) // 添加新的迁移
                             .build()
                     INSTANCE = instance

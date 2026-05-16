@@ -24,5 +24,11 @@ data class ChatHistory(
     val parentChatId: String? = null,
     val characterCardName: String? = null,
     val characterGroupId: String? = null,
-    val locked: Boolean = false
+    val locked: Boolean = false,
+    val cachedInputTokens: Int = 0,
+    val reasoningTokens: Int = 0,
+    val apiCallCount: Int = 0,
+    val provider: String = "",
+    val modelName: String = "",
+    val contextLimit: Int = 0
 )

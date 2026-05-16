@@ -284,6 +284,7 @@ class MessageProcessingDelegate(
         inputTokens: Int,
         outputTokens: Int,
         cachedInputTokens: Int,
+        reasoningTokens: Int,
         sentAt: Long,
         outputDurationMs: Long,
         waitDurationMs: Long
@@ -292,6 +293,7 @@ class MessageProcessingDelegate(
             inputTokens = inputTokens,
             outputTokens = outputTokens,
             cachedInputTokens = cachedInputTokens,
+            reasoningTokens = reasoningTokens,
             sentAt = sentAt,
             outputDurationMs = outputDurationMs,
             waitDurationMs = waitDurationMs
@@ -302,6 +304,7 @@ class MessageProcessingDelegate(
         val inputTokens: Int,
         val outputTokens: Int,
         val cachedInputTokens: Int,
+        val reasoningTokens: Int,
         val sentAt: Long,
         val outputDurationMs: Long,
         val waitDurationMs: Long,
@@ -333,6 +336,7 @@ class MessageProcessingDelegate(
                 inputTokens = snapshot.inputTokens,
                 outputTokens = snapshot.outputTokens,
                 cachedInputTokens = snapshot.cachedInputTokens,
+                reasoningTokens = snapshot.reasoningTokens,
                 sentAt = sentAt,
                 outputDurationMs = outputDurationMs,
                 waitDurationMs = waitDurationMs,
@@ -359,6 +363,7 @@ class MessageProcessingDelegate(
                     inputTokens = stats.inputTokens,
                     outputTokens = stats.outputTokens,
                     cachedInputTokens = stats.cachedInputTokens,
+                    reasoningTokens = stats.reasoningTokens,
                     sentAt = stats.sentAt.takeIf { it > 0L } ?: streamingMessage.sentAt,
                     outputDurationMs = stats.outputDurationMs,
                     waitDurationMs = stats.waitDurationMs,
@@ -383,6 +388,7 @@ class MessageProcessingDelegate(
                             inputTokens = stats.inputTokens,
                             outputTokens = stats.outputTokens,
                             cachedInputTokens = stats.cachedInputTokens,
+                            reasoningTokens = stats.reasoningTokens,
                             sentAt = stats.sentAt.takeIf { it > 0L } ?: matchingUserMessage.sentAt,
                             outputDurationMs = stats.outputDurationMs,
                             waitDurationMs = stats.waitDurationMs,
@@ -691,6 +697,7 @@ class MessageProcessingDelegate(
             var turnInputTokens = 0
             var turnOutputTokens = 0
             var turnCachedInputTokens = 0
+            var turnReasoningTokens = 0
             var calculateNextWindowSize: (suspend () -> Int?)? = null
             try {
                 // if (!NetworkUtils.isNetworkAvailable(context)) {
@@ -1203,6 +1210,7 @@ class MessageProcessingDelegate(
                     turnInputTokens = service.getCurrentInputTokenCount()
                     turnOutputTokens = service.getCurrentOutputTokenCount()
                     turnCachedInputTokens = service.getCurrentCachedInputTokenCount()
+                    turnReasoningTokens = service.getCurrentReasoningTokenCount()
                 }.onFailure {
                     AppLogger.w(TAG, "读取本轮 token 统计失败", it)
                 }
@@ -1227,6 +1235,7 @@ class MessageProcessingDelegate(
                                 inputTokens = turnInputTokens,
                                 outputTokens = turnOutputTokens,
                                 cachedInputTokens = turnCachedInputTokens,
+                                reasoningTokens = turnReasoningTokens,
                                 sentAt = requestSentAt,
                                 outputDurationMs = outputDurationMs,
                                 waitDurationMs = waitDurationMs
@@ -1239,6 +1248,7 @@ class MessageProcessingDelegate(
                             inputTokens = turnInputTokens,
                             outputTokens = turnOutputTokens,
                             cachedInputTokens = turnCachedInputTokens,
+                            reasoningTokens = turnReasoningTokens,
                             sentAt = requestSentAt,
                             outputDurationMs = outputDurationMs,
                             waitDurationMs = waitDurationMs
@@ -1527,10 +1537,12 @@ class MessageProcessingDelegate(
             var turnInputTokens = 0
             var turnOutputTokens = 0
             var turnCachedInputTokens = 0
+            var turnReasoningTokens = 0
             runCatching {
                 turnInputTokens = service.getCurrentInputTokenCount()
                 turnOutputTokens = service.getCurrentOutputTokenCount()
                 turnCachedInputTokens = service.getCurrentCachedInputTokenCount()
+                turnReasoningTokens = service.getCurrentReasoningTokenCount()
             }.onFailure {
                 AppLogger.w(TAG, "读取重新生成 token 统计失败", it)
             }
@@ -1554,6 +1566,7 @@ class MessageProcessingDelegate(
                     inputTokens = turnInputTokens,
                     outputTokens = turnOutputTokens,
                     cachedInputTokens = turnCachedInputTokens,
+                    reasoningTokens = turnReasoningTokens,
                     sentAt = requestSentAt,
                     outputDurationMs = outputDurationMs,
                     waitDurationMs = waitDurationMs,

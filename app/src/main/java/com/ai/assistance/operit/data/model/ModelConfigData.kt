@@ -152,6 +152,10 @@ data class ModelConfigData(
         // DeepSeek推理模式配置
         val enableDeepseekReasoning: Boolean = false, // 是否启用DeepSeek推理模式（reasoning_content支持，适用于第三方端点调用DeepSeek模型）
 
+        // 思考模式与模型绑定配置
+        val defaultThinkingEnabled: Boolean? = null,   // null=不覆盖(保持全局), true=默认开, false=默认关
+        val defaultThinkingQuality: Int? = null,        // null=不覆盖, 1-4=覆盖
+
         // 请求频率限制配置
         val requestLimitPerMinute: Int = 0, // 每分钟最大请求次数，0表示不限流
         val maxConcurrentRequests: Int = 0 // 最大并发请求数，0表示不限制

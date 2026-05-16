@@ -89,9 +89,9 @@ class QwenAIProvider(
         enableThinking: Boolean
     ) {
         if (qwenProviderType != ApiProviderType.SILICONFLOW) {
-            if (enableThinking && !requestJson.has("enable_thinking")) {
-                requestJson.put("enable_thinking", true)
-                AppLogger.d("QwenAIProvider", "已为Qwen模型启用“思考模式”。")
+            if (!requestJson.has("enable_thinking")) {
+                requestJson.put("enable_thinking", enableThinking)
+                AppLogger.d("QwenAIProvider", "Qwen思考模式: enable_thinking=$enableThinking")
             }
             return
         }
@@ -182,7 +182,7 @@ class QwenAIProvider(
         stream: Boolean,
         availableTools: List<ToolPrompt>?,
         preserveThinkInHistory: Boolean,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean
     ): Stream<String> {

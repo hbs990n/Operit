@@ -19,6 +19,7 @@ data class ChatMessage(
         val inputTokens: Int = 0, // 本轮输入 token
         val outputTokens: Int = 0, // 本轮输出 token
         val cachedInputTokens: Int = 0, // 本轮缓存命中的输入 token
+        val reasoningTokens: Int = 0, // 本轮推理 token
         val sentAt: Long = 0L, // 本轮请求发送时间（时间戳）
         val outputDurationMs: Long = 0L, // 本轮输出耗时
         val waitDurationMs: Long = 0L, // 本轮等待首包耗时
@@ -49,6 +50,7 @@ data class ChatMessage(
         inputTokens = parcel.readInt(),
         outputTokens = parcel.readInt(),
         cachedInputTokens = parcel.readInt(),
+        reasoningTokens = if (parcel.dataAvail() > 0) parcel.readInt() else 0,
         sentAt = parcel.readLong(),
         outputDurationMs = parcel.readLong(),
         waitDurationMs = parcel.readLong(),
@@ -69,6 +71,7 @@ data class ChatMessage(
         parcel.writeInt(inputTokens)
         parcel.writeInt(outputTokens)
         parcel.writeInt(cachedInputTokens)
+        parcel.writeInt(reasoningTokens)
         parcel.writeLong(sentAt)
         parcel.writeLong(outputDurationMs)
         parcel.writeLong(waitDurationMs)

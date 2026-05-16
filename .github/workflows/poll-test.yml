@@ -1,0 +1,31 @@
+name: Poll Test
+on:
+  workflow_dispatch:
+jobs:
+  poll-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Simulate short build (3-5 min)
+        run: |
+          echo "=== Poll Test Workflow Started at $(date) ==="
+          echo "Step 1: Waiting 60s..."
+          sleep 60
+          echo "Step 1 done at $(date)"
+          echo "Step 2: Waiting 60s..."
+          sleep 60
+          echo "Step 2 done at $(date)"
+          echo "Step 3: Waiting 60s..."
+          sleep 60
+          echo "Step 3 done at $(date)"
+          echo "Step 4: Running gradle help (quick task)..."
+          chmod +x gradlew
+          ./gradlew --help --no-daemon 2>&1 | head -20
+          echo "Step 4 done at $(date)"
+          echo "Step 5: Final wait 60s..."
+          sleep 60
+          echo "Step 5 done at $(date)"
+          echo "=== Poll Test Workflow Completed at $(date) ==="
+      - name: Done
+        run: echo "Poll test finished successfully!"

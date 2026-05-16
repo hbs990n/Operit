@@ -581,7 +581,7 @@ class MNNProvider(
         stream: Boolean,
         availableTools: List<ToolPrompt>?,
         preserveThinkInHistory: Boolean,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int, reasoning: Int) -> Unit,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean
     ): Stream<String> = stream {
@@ -646,7 +646,7 @@ class MNNProvider(
                         }
                         countTokens(buildPrompt(conversationHistory))
                     }
-            onTokensUpdated(_inputTokenCount, 0, 0)
+            onTokensUpdated(_inputTokenCount, 0, 0, 0)
 
             AppLogger.d(
                 TAG,
@@ -673,7 +673,7 @@ class MNNProvider(
 
                     kotlin.runCatching {
                         kotlinx.coroutines.runBlocking {
-                            onTokensUpdated(_inputTokenCount, 0, _outputTokenCount)
+                            onTokensUpdated(_inputTokenCount, 0, _outputTokenCount, 0)
                         }
                     }
 

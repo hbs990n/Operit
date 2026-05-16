@@ -282,4 +282,38 @@ interface MessageDao {
     /** 批量重命名消息中的角色名 */
     @Query("UPDATE messages SET roleName = :newName WHERE roleName = :oldName")
     suspend fun renameRoleName(oldName: String, newName: String): Int
+
+    /** 获取指定聊天的消息发送者统计（user/ai/summary/tool数量） */
+    @Query("""
+        SELECT sender, COUNT(*) as count FROM messages
+        WHERE chatId = :chatId
+        GROUP BY sender
+    """)
+    suspend fun getMessageSenderStats(chatId: String): List<SenderStat>
+
+    /** 获取指定聊天的token汇总 */
+    @Query("""
+        SELECT
+            IFNULL(SUM(inputTokens), 0) as totalInputTokens,
+            IFNULL(SUM(outputTokens), 0) as totalOutputTokens,
+            IFNULL(SUM(cachedInputTokens), 0) as totalCachedInputTokens,
+            IFNULL(SUM(reasoningTokens), 0) as totalReasoningTokens
+        FROM messages
+        WHERE chatId = :chatId AND sender = 'ai'
+    """)
+    suspend fun getChatTokenAggregate(chatId: String): ChatTokenAggregate
 }
+
+/** 发送者统计 */
+data class SenderStat(
+    val sender: String,
+    val count: Int
+)
+
+/** 聊天Token聚合 */
+data class ChatTokenAggregate(
+    val totalInputTokens: Int,
+    val totalOutputTokens: Int,
+    val totalCachedInputTokens: Int,
+    val totalReasoningTokens: Int
+)

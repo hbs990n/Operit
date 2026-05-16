@@ -237,7 +237,8 @@ object OpenAIResponsesPayloadAdapter {
         val totalInputTokens: Int,
         val actualInputTokens: Int,
         val cachedInputTokens: Int,
-        val outputTokens: Int
+        val outputTokens: Int,
+        val reasoningTokens: Int = 0
     )
 
     data class ParsedResponseOutput(
@@ -266,9 +267,12 @@ object OpenAIResponsesPayloadAdapter {
             cachedDetails?.optInt("cached_tokens", usage.optInt("cached_tokens", 0))
                 ?: usage.optInt("cached_tokens", 0)
         val actualInputTokens = (totalInputTokens - cachedInputTokens).coerceAtLeast(0)
+        val completionDetails = usage.optJSONObject("completion_tokens_details")
+            ?: usage.optJSONObject("output_tokens_details")
+        val reasoningTokens = completionDetails?.optInt("reasoning_tokens", 0) ?: 0
 
         return if (totalInputTokens > 0 || outputTokens > 0 || cachedInputTokens > 0) {
-            UsageCounts(totalInputTokens, actualInputTokens, cachedInputTokens, outputTokens)
+            UsageCounts(totalInputTokens, actualInputTokens, cachedInputTokens, outputTokens, reasoningTokens)
         } else {
             null
         }

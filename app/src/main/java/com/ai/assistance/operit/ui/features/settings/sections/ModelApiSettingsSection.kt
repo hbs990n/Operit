@@ -141,6 +141,11 @@ fun ModelApiSettingsSection(
     // DeepSeek推理模式配置状态
     var enableDeepseekReasoningInput by remember(config.id) { mutableStateOf(config.enableDeepseekReasoning) }
 
+    // 思考模式与模型绑定配置状态
+    // null=跟随全局设置, true=默认开启思考, false=默认关闭思考
+    var defaultThinkingEnabledInput by remember(config.id) { mutableStateOf(config.defaultThinkingEnabled) }
+    var defaultThinkingQualityInput by remember(config.id) { mutableStateOf(config.defaultThinkingQuality) }
+
     data class ApiAutoSaveState(
         val apiEndpoint: String,
         val apiKey: String,
@@ -158,6 +163,8 @@ fun ModelApiSettingsSection(
         val enableGoogleSearch: Boolean,
         val enableToolCall: Boolean,
         val enableDeepseekReasoning: Boolean,
+        val defaultThinkingEnabled: Boolean?,
+        val defaultThinkingQuality: Int?,
     )
 
     // 保存设置的通用函数
@@ -182,6 +189,8 @@ fun ModelApiSettingsSection(
                     enableGoogleSearch = state.enableGoogleSearch,
                     enableToolCall = state.enableToolCall,
                     enableDeepseekReasoning = state.enableDeepseekReasoning,
+                    defaultThinkingEnabled = state.defaultThinkingEnabled,
+                    defaultThinkingQuality = state.defaultThinkingQuality,
                 )
 
                 EnhancedAIService.refreshAllServices(
@@ -209,6 +218,8 @@ fun ModelApiSettingsSection(
             enableGoogleSearch = enableGoogleSearchInput,
             enableToolCall = enableToolCallInput,
             enableDeepseekReasoning = enableDeepseekReasoningInput,
+            defaultThinkingEnabled = defaultThinkingEnabledInput,
+            defaultThinkingQuality = defaultThinkingQualityInput,
         )
     }
 
@@ -774,6 +785,58 @@ fun ModelApiSettingsSection(
                     checked = enableDeepseekReasoningInput,
                     onCheckedChange = { enableDeepseekReasoningInput = it }
                 )
+            }
+
+            // 思考模式与模型绑定配置
+            var showDefaultThinkingDialog by remember { mutableStateOf(false) }
+            val defaultThinkingDisplayText = when (defaultThinkingEnabledInput) {
+                null -> stringResource(R.string.default_thinking_follow_global)
+                true -> stringResource(R.string.default_thinking_on)
+                false -> stringResource(R.string.default_thinking_off)
+            }
+            SettingsSelectorRow(
+                title = stringResource(R.string.default_thinking_enabled),
+                subtitle = stringResource(R.string.default_thinking_enabled_desc),
+                value = defaultThinkingDisplayText,
+                onClick = { showDefaultThinkingDialog = true }
+            )
+
+            if (showDefaultThinkingDialog) {
+                DefaultThinkingModeDialog(
+                    currentValue = defaultThinkingEnabledInput,
+                    onDismissRequest = { showDefaultThinkingDialog = false },
+                    onValueSelected = { value ->
+                        defaultThinkingEnabledInput = value
+                        if (value != true) {
+                            defaultThinkingQualityInput = null
+                        }
+                        showDefaultThinkingDialog = false
+                    }
+                )
+            }
+
+            // 当选择"默认开启"时，显示思考深度选择
+            if (defaultThinkingEnabledInput == true) {
+                var showDefaultThinkingQualityDialog by remember { mutableStateOf(false) }
+                val qualityDisplayText = defaultThinkingQualityInput?.toString()
+                    ?: stringResource(R.string.default_thinking_follow_global)
+                SettingsSelectorRow(
+                    title = stringResource(R.string.default_thinking_quality),
+                    subtitle = stringResource(R.string.default_thinking_quality_desc),
+                    value = qualityDisplayText,
+                    onClick = { showDefaultThinkingQualityDialog = true }
+                )
+
+                if (showDefaultThinkingQualityDialog) {
+                    DefaultThinkingQualityDialog(
+                        currentValue = defaultThinkingQualityInput,
+                        onDismissRequest = { showDefaultThinkingQualityDialog = false },
+                        onValueSelected = { value ->
+                            defaultThinkingQualityInput = value
+                            showDefaultThinkingQualityDialog = false
+                        }
+                    )
+                }
             }
 
         }
@@ -1748,5 +1811,129 @@ private fun getProviderColor(providerTypeId: String): androidx.compose.ui.graphi
         ApiProviderType.PPINFRA -> MaterialTheme.colorScheme.primaryContainer
         ApiProviderType.NOVITA -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.75f)
         ApiProviderType.OTHER -> MaterialTheme.colorScheme.surfaceVariant
+    }
+}
+
+@Composable
+private fun DefaultThinkingModeDialog(
+    currentValue: Boolean?,
+    onDismissRequest: () -> Unit,
+    onValueSelected: (Boolean?) -> Unit
+) {
+    Dialog(onDismissRequest = onDismissRequest) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 6.dp,
+            shadowElevation = 8.dp
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    stringResource(R.string.default_thinking_enabled),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+
+                val options = listOf(
+                    null to stringResource(R.string.default_thinking_follow_global),
+                    true to stringResource(R.string.default_thinking_on),
+                    false to stringResource(R.string.default_thinking_off)
+                )
+
+                options.forEach { (value, label) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onValueSelected(value) }
+                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = currentValue == value,
+                            onClick = { onValueSelected(value) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismissRequest) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DefaultThinkingQualityDialog(
+    currentValue: Int?,
+    onDismissRequest: () -> Unit,
+    onValueSelected: (Int?) -> Unit
+) {
+    Dialog(onDismissRequest = onDismissRequest) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 6.dp,
+            shadowElevation = 8.dp
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    stringResource(R.string.default_thinking_quality),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+
+                val options = listOf(
+                    null to stringResource(R.string.default_thinking_follow_global),
+                    1 to "1",
+                    2 to "2",
+                    3 to "3",
+                    4 to "4"
+                )
+
+                options.forEach { (value, label) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onValueSelected(value) }
+                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = currentValue == value,
+                            onClick = { onValueSelected(value) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismissRequest) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            }
+        }
     }
 }

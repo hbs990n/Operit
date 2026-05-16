@@ -1323,7 +1323,13 @@ class ChatHistoryManager private constructor(private val context: Context) {
         chatId: String,
         inputTokens: Int,
         outputTokens: Int,
-        currentWindowSize: Int
+        currentWindowSize: Int,
+        cachedInputTokens: Int = 0,
+        reasoningTokens: Int = 0,
+        apiCallCount: Int = 0,
+        provider: String = "",
+        modelName: String = "",
+        contextLimit: Int = 0
     ) {
         chatMutex(chatId).withLock {
             try {
@@ -1335,7 +1341,13 @@ class ChatHistoryManager private constructor(private val context: Context) {
                         timestamp = System.currentTimeMillis(),
                         inputTokens = inputTokens,
                         outputTokens = outputTokens,
-                        currentWindowSize = currentWindowSize
+                        currentWindowSize = currentWindowSize,
+                        cachedInputTokens = cachedInputTokens,
+                        reasoningTokens = reasoningTokens,
+                        apiCallCount = apiCallCount,
+                        provider = provider,
+                        modelName = modelName,
+                        contextLimit = contextLimit
                     )
                 }
             } catch (e: Exception) {
