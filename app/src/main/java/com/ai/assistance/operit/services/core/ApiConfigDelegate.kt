@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -314,6 +315,29 @@ class ApiConfigDelegate(
 
         // 加载用户偏好设置
         initializeSettingsCollection()
+
+        // 监听模型切换（仅 configId 变化时），自动同步思考模式设置
+        coroutineScope.launch {
+            effectiveChatConfig
+                .map { it.id }
+                .distinctUntilChanged()
+                .collect { configId ->
+                    val config = modelConfigManager.getModelConfig(configId) ?: return@collect
+                    config.defaultThinkingEnabled?.let { default ->
+                        if (_enableThinkingMode.value != default) {
+                            _enableThinkingMode.value = default
+                            apiPreferences.updateThinkingSettings(enableThinkingMode = default)
+                        }
+                    }
+                    config.defaultThinkingQuality?.let { default ->
+                        val clamped = default.coerceIn(1, 4)
+                        if (_thinkingQualityLevel.value != clamped) {
+                            _thinkingQualityLevel.value = clamped
+                            apiPreferences.saveThinkingQualityLevel(clamped)
+                        }
+                    }
+                }
+        }
 
         // 异步创建AI服务实例，避免在主线程上执行阻塞操作
         coroutineScope.launch(Dispatchers.IO) {

@@ -3779,6 +3779,13 @@
     <string name="enable_tool_call_desc">When disabled, uses the built-in tool invocation mechanism which also supports tool calls. When enabled, uses the API\'s dedicated native interface (requires model support)</string>
     <string name="enable_deepseek_reasoning">Enable DeepSeek Reasoning Mode</string>
     <string name="enable_deepseek_reasoning_desc">When enabled, content within &lt;think&gt; tags will be sent as reasoning_content to DeepSeek models, supporting tool invocation for reasoning models like DeepSeek-R1</string>
+    <string name="default_thinking_enabled">Default Thinking Mode</string>
+    <string name="default_thinking_enabled_desc">Automatically set thinking mode when switching to this model</string>
+    <string name="default_thinking_follow_global">Follow global setting</string>
+    <string name="default_thinking_on">Default on</string>
+    <string name="default_thinking_off">Default off</string>
+    <string name="default_thinking_quality">Default Thinking Quality</string>
+    <string name="default_thinking_quality_desc">Automatically set thinking quality level when switching to this model (1-4)</string>
     <string name="search_sources">Search Sources</string>
     <string name="api_settings_saved">API settings saved</string>
     <string name="save_api_settings">Save API Settings</string>

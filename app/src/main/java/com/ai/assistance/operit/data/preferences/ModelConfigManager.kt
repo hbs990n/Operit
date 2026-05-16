@@ -355,7 +355,9 @@ class ModelConfigManager(private val context: Context) {
             enableDirectVideoProcessing: Boolean,
             enableGoogleSearch: Boolean,
             enableToolCall: Boolean,
-            enableDeepseekReasoning: Boolean = false
+            enableDeepseekReasoning: Boolean = false,
+            defaultThinkingEnabled: Boolean? = null,
+            defaultThinkingQuality: Int? = null
     ): ModelConfigData {
         return updateConfigInternal(configId) {
             it.copy(
@@ -374,7 +376,9 @@ class ModelConfigManager(private val context: Context) {
                     enableDirectVideoProcessing = enableDirectVideoProcessing,
                     enableGoogleSearch = enableGoogleSearch,
                     enableToolCall = enableToolCall,
-                    enableDeepseekReasoning = enableDeepseekReasoning
+                    enableDeepseekReasoning = enableDeepseekReasoning,
+                    defaultThinkingEnabled = defaultThinkingEnabled,
+                    defaultThinkingQuality = defaultThinkingQuality
             )
         }
     }

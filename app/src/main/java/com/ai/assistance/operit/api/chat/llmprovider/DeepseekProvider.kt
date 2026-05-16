@@ -76,8 +76,17 @@ class DeepseekProvider(
             }
         }
 
-        // 如果未启用推理模式，直接使用父类的实现
-        // 推理模式固定开启，需要特殊处理
+        // 当未启用推理模式时，使用父类标准消息格式（不含 reasoning_content）
+        // 但仍需发送 thinking.type=disabled（DeepSeek API 要求显式声明思考状态）
+        if (!enableThinking) {
+            val baseRequestBodyJson = super.createRequestBodyInternal(
+                context, chatHistory, modelParameters, stream, availableTools, preserveThinkInHistory
+            )
+            val jsonObject = JSONObject(baseRequestBodyJson)
+            applyThinkingParamsIfNeeded(jsonObject)
+            return createJsonRequestBody(jsonObject.toString())
+        }
+
         val jsonObject = JSONObject()
         jsonObject.put("model", modelName)
         jsonObject.put("stream", stream)
