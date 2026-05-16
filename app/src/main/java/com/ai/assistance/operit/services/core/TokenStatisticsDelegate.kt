@@ -21,6 +21,19 @@ class TokenStatisticsDelegate(
         private const val TAG = "TokenStatisticsDelegate"
     }
 
+    /** 综合Token统计数据类 */
+    data class ChatTokenStats(
+        val inputTokens: Int,
+        val outputTokens: Int,
+        val windowSize: Int,
+        val cachedInputTokens: Int = 0,
+        val reasoningTokens: Int = 0,
+        val apiCallCount: Int = 0,
+        val provider: String = "",
+        val modelName: String = "",
+        val contextLimit: Int = 0
+    )
+
     // --- UI State Flows ---
     private val _cumulativeInputTokens = MutableStateFlow(0)
     val cumulativeInputTokensFlow: StateFlow<Int> = _cumulativeInputTokens.asStateFlow()
@@ -34,6 +47,15 @@ class TokenStatisticsDelegate(
     private val _perRequestTokenCount = MutableStateFlow<Pair<Int, Int>?>(null)
     val perRequestTokenCountFlow: StateFlow<Pair<Int, Int>?> = _perRequestTokenCount.asStateFlow()
 
+    private val _cumulativeCachedInputTokens = MutableStateFlow(0)
+    val cumulativeCachedInputTokensFlow: StateFlow<Int> = _cumulativeCachedInputTokens.asStateFlow()
+
+    private val _cumulativeReasoningTokens = MutableStateFlow(0)
+    val cumulativeReasoningTokensFlow: StateFlow<Int> = _cumulativeReasoningTokens.asStateFlow()
+
+    private val _apiCallCount = MutableStateFlow(0)
+    val apiCallCountFlow: StateFlow<Int> = _apiCallCount.asStateFlow()
+
     // --- Internal State ---
     private var lastCurrentWindowSize = 0
     private var tokenCollectorJob: Job? = null
@@ -46,6 +68,9 @@ class TokenStatisticsDelegate(
     private val lastWindowSizeByChatKey = ConcurrentHashMap<String, Int>()
     private val perRequestTokenCountByChatKey =
         ConcurrentHashMap<String, Pair<Int, Int>?>()
+    private val cumulativeCachedInputTokensByChatKey = ConcurrentHashMap<String, Int>()
+    private val cumulativeReasoningTokensByChatKey = ConcurrentHashMap<String, Int>()
+    private val apiCallCountByChatKey = ConcurrentHashMap<String, Int>()
 
     @Volatile private var activeChatId: String? = null
 
@@ -59,11 +84,17 @@ class TokenStatisticsDelegate(
         val output = cumulativeOutputTokensByChatKey[key] ?: 0
         val window = lastWindowSizeByChatKey[key] ?: 0
         val perRequest = perRequestTokenCountByChatKey[key]
+        val cachedInput = cumulativeCachedInputTokensByChatKey[key] ?: 0
+        val reasoning = cumulativeReasoningTokensByChatKey[key] ?: 0
+        val apiCalls = apiCallCountByChatKey[key] ?: 0
 
         _cumulativeInputTokens.value = input
         _cumulativeOutputTokens.value = output
         _currentWindowSize.value = window
         _perRequestTokenCount.value = perRequest
+        _cumulativeCachedInputTokens.value = cachedInput
+        _cumulativeReasoningTokens.value = reasoning
+        _apiCallCount.value = apiCalls
         lastCurrentWindowSize = window
     }
 
@@ -162,12 +193,18 @@ class TokenStatisticsDelegate(
         _cumulativeOutputTokens.value = 0
         _currentWindowSize.value = 0
         _perRequestTokenCount.value = null
+        _cumulativeCachedInputTokens.value = 0
+        _cumulativeReasoningTokens.value = 0
+        _apiCallCount.value = 0
         lastCurrentWindowSize = 0
 
         cumulativeInputTokensByChatKey.clear()
         cumulativeOutputTokensByChatKey.clear()
         lastWindowSizeByChatKey.clear()
         perRequestTokenCountByChatKey.clear()
+        cumulativeCachedInputTokensByChatKey.clear()
+        cumulativeReasoningTokensByChatKey.clear()
+        apiCallCountByChatKey.clear()
 
         // 同时重置服务中的token计数
         val services = buildSet {
@@ -187,22 +224,33 @@ class TokenStatisticsDelegate(
                 // 从AI服务获取最新的token统计
                 val currentInputTokens = it.getCurrentInputTokenCount()
                 val currentOutputTokens = it.getCurrentOutputTokenCount()
+                val currentCachedInput = it.cachedInputTokenCount
+                val currentReasoning = it.getCurrentReasoningTokenCount()
 
                 // 更新累计token数
                 val newInput = (cumulativeInputTokensByChatKey[key] ?: 0) + currentInputTokens
                 val newOutput = (cumulativeOutputTokensByChatKey[key] ?: 0) + currentOutputTokens
                 cumulativeInputTokensByChatKey[key] = newInput
                 cumulativeOutputTokensByChatKey[key] = newOutput
+                cumulativeCachedInputTokensByChatKey[key] = currentCachedInput
+                cumulativeReasoningTokensByChatKey[key] = currentReasoning
+
+                // 增加API调用计数
+                val newApiCallCount = (apiCallCountByChatKey[key] ?: 0) + 1
+                apiCallCountByChatKey[key] = newApiCallCount
 
                 if (isActiveKey(key)) {
                     _cumulativeInputTokens.value = newInput
                     _cumulativeOutputTokens.value = newOutput
+                    _cumulativeCachedInputTokens.value = currentCachedInput
+                    _cumulativeReasoningTokens.value = currentReasoning
+                    _apiCallCount.value = newApiCallCount
                 }
 
                 AppLogger.d(
                         TAG,
                     "Cumulative token stats updated - " +
-                            "Input: $newInput, Output: $newOutput"
+                            "Input: $newInput, Output: $newOutput, CachedInput: $currentCachedInput, Reasoning: $currentReasoning, ApiCalls: $newApiCallCount"
                 )
             } catch (e: Exception) {
                 AppLogger.e(TAG, "获取累计token计数时出错: ${e.message}", e)
@@ -242,5 +290,18 @@ class TokenStatisticsDelegate(
     fun getLastCurrentWindowSize(chatId: String? = activeChatId): Int {
         val key = chatKey(chatId)
         return lastWindowSizeByChatKey[key] ?: 0
+    }
+
+    /** 获取综合Token统计数据 */
+    fun getChatTokenStats(chatId: String? = activeChatId): ChatTokenStats {
+        val key = chatKey(chatId)
+        return ChatTokenStats(
+            inputTokens = cumulativeInputTokensByChatKey[key] ?: 0,
+            outputTokens = cumulativeOutputTokensByChatKey[key] ?: 0,
+            windowSize = lastWindowSizeByChatKey[key] ?: 0,
+            cachedInputTokens = cumulativeCachedInputTokensByChatKey[key] ?: 0,
+            reasoningTokens = cumulativeReasoningTokensByChatKey[key] ?: 0,
+            apiCallCount = apiCallCountByChatKey[key] ?: 0
+        )
     }
 }

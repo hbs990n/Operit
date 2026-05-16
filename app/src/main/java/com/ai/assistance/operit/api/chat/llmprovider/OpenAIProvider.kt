@@ -1334,7 +1334,6 @@ open class OpenAIProvider(
                     tokenCacheManager.totalInputTokenCount,
                     tokenCacheManager.cachedInputTokenCount,
                     tokenCacheManager.outputTokenCount,
-                0,
                     0
                 )
             }
@@ -1350,7 +1349,6 @@ open class OpenAIProvider(
                     tokenCacheManager.totalInputTokenCount,
                     tokenCacheManager.cachedInputTokenCount,
                     tokenCacheManager.outputTokenCount,
-                0,
                     0
                 )
             }
